@@ -9,7 +9,7 @@ export async function createDraft() {
   const { book, reason, hook } = await selectTodaysBook(theme);
 
   const content = await generateCardContent(
-    { title: book.title, author: book.author ?? "", description: book.description ?? "", toc: book.toc },
+    { title: book.title, author: book.author ?? "", description: book.description ?? "", toc: book.toc ?? undefined },
     { theme, selectionReason: reason },
   );
 
