@@ -10,7 +10,7 @@ export function GenerateButton() {
   async function handleGenerate() {
     setLoading(true);
     try {
-      const res = await fetch("/api/cron/daily-book");
+      const res = await fetch("/api/admin/drafts/generate", { method: "POST" });
       const data = await res.json();
       if (data.ok) {
         router.refresh();
