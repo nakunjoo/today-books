@@ -6,28 +6,27 @@ export async function createDraft() {
   const db = supabaseAdmin();
   const theme = themeForDate();
 
-  // 1. 오늘의 책 선정
   const { book, reason, hook } = await selectTodaysBook(theme);
 
-  // 2. 카드 콘텐츠 생성
   const content = await generateCardContent(
-    {
-      title: book.title,
-      author: book.author ?? "",
-      description: book.description ?? "",
-    },
+    { title: book.title, author: book.author ?? "", description: book.description ?? "", toc: book.toc },
     { theme, selectionReason: reason },
   );
 
-  // 3. drafts 테이블에 pending_review 상태로 저장
   const { data: draft, error } = await db
     .from("drafts")
     .insert({
-      book_id: book.id,
       status: "pending_review",
       theme,
       selection_reason: reason,
       hook,
+      isbn13: book.isbn13,
+      title: book.title,
+      author: book.author,
+      publisher: book.publisher,
+      cover_url: book.cover_url,
+      description: book.description,
+      toc: book.toc,
       content,
       caption: content.caption,
       hashtags: content.hashtags,

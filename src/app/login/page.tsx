@@ -33,7 +33,7 @@ export default function LoginPage() {
           관리자 페이지
         </p>
         <button
-          onClick={() => signIn("google", { callbackUrl: "/admin/drafts" })}
+          onClick={() => signIn("google", { callbackUrl: "/" })}
           style={{
             width: "100%",
             padding: "12px 24px",

@@ -13,10 +13,9 @@ export async function POST(
   const { id } = await params;
   const db = supabaseAdmin();
 
-  // 기존 초안 + 책 정보 조회
   const { data: draft, error: fetchError } = await db
     .from("drafts")
-    .select("*, books(title, author, description, toc)")
+    .select("*")
     .eq("id", id)
     .single();
 
@@ -24,27 +23,19 @@ export async function POST(
     return NextResponse.json({ ok: false, error: "초안을 찾을 수 없습니다" }, { status: 404 });
   }
 
-  const book = draft.books as { title: string; author: string; description: string; toc: string } | null;
-  if (!book) {
+  if (!draft.title) {
     return NextResponse.json({ ok: false, error: "책 정보 없음" }, { status: 400 });
   }
 
-  // 새 콘텐츠 생성
   const theme = draft.theme ?? themeForDate();
   const content = await generateCardContent(
-    { title: book.title, author: book.author, description: book.description ?? "", toc: book.toc },
+    { title: draft.title, author: draft.author ?? "", description: draft.description ?? "", toc: draft.toc },
     { theme, selectionReason: draft.selection_reason ?? undefined },
   );
 
-  // 초안 업데이트
   const { error: updateError } = await db
     .from("drafts")
-    .update({
-      content,
-      caption: content.caption,
-      hashtags: content.hashtags,
-      status: "pending_review",
-    })
+    .update({ content, caption: content.caption, hashtags: content.hashtags, status: "pending_review" })
     .eq("id", id);
 
   if (updateError) {
