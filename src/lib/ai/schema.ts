@@ -27,7 +27,7 @@ export const cardContentSchema = z.object({
   quote: z.object({
     text: z
       .string()
-      .max(30)
+      .max(100)
       .describe("출판사 소개에 공개된 짧은 구절 (없으면 핵심 메시지)"),
     context: z.string().max(40).describe("어떤 맥락의 문장인지"),
   }),
