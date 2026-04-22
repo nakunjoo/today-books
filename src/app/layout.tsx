@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "todayBooks",
   description: "매일 한 권, 당신의 삶을 바꿀 책",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
