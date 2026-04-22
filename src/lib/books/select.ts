@@ -55,21 +55,18 @@ export async function selectTodaysBook(theme?: string) {
     ...(recentDrafts ?? []).map((d) => d.isbn13),
   ].filter(Boolean));
 
-  // 소설 카테고리 ID별 신간 + 베스트셀러 병렬 fetch
-  const [newResults, bestResults] = await Promise.all([
-    Promise.all(NOVEL_CATEGORY_IDS.map((id) => fetchAladinList({ queryType: "ItemNewAll", max: 10, categoryId: id }))),
-    Promise.all(NOVEL_CATEGORY_IDS.map((id) => fetchAladinList({ queryType: "Bestseller", max: 10, categoryId: id }))),
-  ]);
-  const newBooks = newResults.flat();
+  // 소설 카테고리 ID별 베스트셀러 병렬 fetch
+  const bestResults = await Promise.all(
+    NOVEL_CATEGORY_IDS.map((id) => fetchAladinList({ queryType: "Bestseller", max: 10, categoryId: id }))
+  );
+  const newBooks: typeof bestResults[0] = [];
   const bestBooks = bestResults.flat();
 
-  console.log("=== 알라딘 신간 원본 ===");
-  console.log(JSON.stringify(newBooks, null, 2));
   console.log("=== 알라딘 베스트셀러 원본 ===");
   console.log(JSON.stringify(bestBooks, null, 2));
 
   const seen = new Set<string>();
-  const candidates = [...newBooks, ...bestBooks].filter((b) => {
+  const candidates = bestBooks.filter((b) => {
     if (!b.isbn13 || seen.has(b.isbn13)) return false;
     if (usedIsbns.has(b.isbn13)) return false;
     if (EXCLUDE_CATEGORIES.some((kw) => b.categoryName?.includes(kw))) return false;
@@ -79,7 +76,7 @@ export async function selectTodaysBook(theme?: string) {
     return true;
   });
 
-  console.log(`[책 선정] 신간 ${newBooks.length}권 + 베스트셀러 ${bestBooks.length}권 → 필터 후 후보 ${candidates.length}권`);
+  console.log(`[책 선정] 베스트셀러 ${bestBooks.length}권 → 필터 후 후보 ${candidates.length}권`);
 
   if (candidates.length === 0) throw new Error("선택 가능한 책이 없습니다.");
 

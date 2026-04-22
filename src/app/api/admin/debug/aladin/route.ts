@@ -41,14 +41,12 @@ export async function GET(req: Request) {
 
   // 기본: 리스트 + 첫 번째 책 상세 조회
   const NOVEL_CATEGORY_IDS = [50998, 50920, 50919, 50993, 89481, 50994, 50922, 89482, 51538, 51032];
-  const [newResults, bestResults] = await Promise.all([
-    Promise.all(NOVEL_CATEGORY_IDS.map((id) => fetchAladinList({ queryType: "ItemNewAll", max: 10, categoryId: id }))),
-    Promise.all(NOVEL_CATEGORY_IDS.map((id) => fetchAladinList({ queryType: "Bestseller", max: 10, categoryId: id }))),
-  ]);
-  const newBooks = newResults.flat();
+  const bestResults = await Promise.all(
+    NOVEL_CATEGORY_IDS.map((id) => fetchAladinList({ queryType: "Bestseller", max: 10, categoryId: id }))
+  );
   const bestBooks = bestResults.flat();
 
-  const firstIsbn = newBooks[0]?.isbn13 ?? bestBooks[0]?.isbn13;
+  const firstIsbn = bestBooks[0]?.isbn13;
 
   const [detailRaw, contentsRaw] = firstIsbn
     ? await Promise.all([
@@ -61,7 +59,6 @@ export async function GET(req: Request) {
     : [null, null];
 
   return NextResponse.json({
-    newBooks,
     bestBooks,
     detailSample: { isbn13: firstIsbn, detailRaw, contentsRaw },
   });

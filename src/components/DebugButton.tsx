@@ -10,10 +10,15 @@ export function DebugButton() {
     try {
       const res = await fetch("/api/admin/debug/aladin");
       const data = await res.json();
-      console.log("=== 알라딘 신간 ===", data.newBooks);
       console.log("=== 알라딘 베스트셀러 ===", data.bestBooks);
-      console.log("=== LLM 선정 결과 ===", data.selected);
-      console.log("=== 선정 책 상세정보 (isbn13 조회) ===", data.detail);
+      const sample = data.detailSample;
+      const item = sample?.detailRaw?.item?.[0];
+      console.log("=== 상세조회 (ItemLookUp) isbn13:", sample?.isbn13, " ===");
+      console.log("item[0] keys:", item ? Object.keys(item) : "item 없음");
+      console.log("item[0] JSON:", JSON.stringify(item, null, 2));
+      console.log("subInfo keys:", item?.subInfo ? Object.keys(item.subInfo) : "subInfo 없음");
+      console.log("subInfo JSON:", JSON.stringify(item?.subInfo, null, 2));
+      console.log("=== getContents.aspx 응답 ===", sample?.contentsRaw);
     } finally {
       setLoading(false);
     }
