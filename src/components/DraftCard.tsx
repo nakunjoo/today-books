@@ -29,9 +29,35 @@ export function DraftCard({ draft }: { draft: Draft }) {
   const [done, setDone] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
   const [captionExpanded, setCaptionExpanded] = useState(false);
-  const [description, setDescription] = useState("");
-  const [toc, setToc] = useState("");
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageMime, setImageMime] = useState("image/jpeg");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  async function compressImage(file: File): Promise<string> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const MAX = 1400;
+        const ratio = Math.min(1, MAX / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * ratio);
+        canvas.height = Math.round(img.height * ratio);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      img.src = url;
+    });
+  }
+
+  async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageMime("image/jpeg");
+    const compressed = await compressImage(file);
+    setImagePreview(compressed);
+  }
   const router = useRouter();
 
   if (done) return null;
@@ -57,13 +83,14 @@ export function DraftCard({ draft }: { draft: Draft }) {
   }
 
   async function handleGenerateContent() {
-    if (!description.trim()) return alert("소개글을 붙여넣어 주세요");
+    if (!imagePreview) return alert("스크린샷을 첨부해주세요");
     setLoading("generate");
     try {
+      const base64 = imagePreview.split(",")[1];
       const res = await fetch(`/api/admin/drafts/${draft.id}/generate-content`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description, toc }),
+        body: JSON.stringify({ imageBase64: base64, mimeType: imageMime }),
       });
       const data = await res.json();
       if (data.ok) router.refresh();
@@ -104,7 +131,7 @@ export function DraftCard({ draft }: { draft: Draft }) {
       {isPendingInput && (
         <div className="px-4 py-4 border-t border-[#F5F0E8]">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-[#2C2416]">알라딘에서 소개글 복붙</p>
+            <p className="text-xs font-semibold text-[#2C2416]">알라딘 상세페이지 스크린샷</p>
             {draft.isbn13 && (
               <a
                 href={`https://www.aladin.co.kr/shop/wproduct.aspx?ISBN=${draft.isbn13}`}
@@ -116,20 +143,25 @@ export function DraftCard({ draft }: { draft: Draft }) {
               </a>
             )}
           </div>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="책 소개글을 붙여넣어 주세요..."
-            className="w-full text-sm border border-[#EDE5D8] rounded-xl p-3 resize-none focus:outline-none focus:border-[#C67856] text-[#2C2416] placeholder:text-[#C0B4A8]"
-            rows={5}
-          />
-          <textarea
-            value={toc}
-            onChange={(e) => setToc(e.target.value)}
-            placeholder="목차 (선택사항)"
-            className="w-full text-sm border border-[#EDE5D8] rounded-xl p-3 resize-none focus:outline-none focus:border-[#C67856] text-[#2C2416] placeholder:text-[#C0B4A8] mt-2"
-            rows={3}
-          />
+
+          {imagePreview ? (
+            <div className="relative rounded-xl overflow-hidden border border-[#EDE5D8]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={imagePreview} alt="스크린샷 미리보기" className="w-full object-contain max-h-64" />
+              <button
+                onClick={() => setImagePreview(null)}
+                className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-lg"
+              >
+                다시 선택
+              </button>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center gap-2 w-full h-32 border-2 border-dashed border-[#EDE5D8] rounded-xl cursor-pointer active:bg-[#F5F0E8] transition-colors">
+              <span className="text-2xl">📷</span>
+              <span className="text-xs text-[#8B7B6B]">스크린샷 첨부</span>
+              <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+            </label>
+          )}
           <button
             onClick={handleGenerateContent}
             disabled={loading !== null}
