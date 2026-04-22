@@ -18,6 +18,7 @@ export type Draft = {
   author: string | null;
   cover_url: string | null;
   isbn13: string | null;
+  description: string | null;
 };
 
 function cardUrl(slide: string, data: Record<string, unknown>) {
@@ -29,6 +30,7 @@ export function DraftCard({ draft }: { draft: Draft }) {
   const [done, setDone] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
   const [captionExpanded, setCaptionExpanded] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
   const [images, setImages] = useState<string[]>([]); // 여러 장 base64 data URL
   const scrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -217,6 +219,24 @@ export function DraftCard({ draft }: { draft: Draft }) {
               <div key={i} className={`rounded-full transition-all ${i === slideIndex ? "w-4 h-1.5 bg-[#C67856]" : "w-1.5 h-1.5 bg-gray-200"}`} />
             ))}
           </div>
+        </div>
+      )}
+
+      {/* AI가 추출한 소개글 확인 */}
+      {!isPendingInput && draft.description && (
+        <div className="px-3 pt-3 border-t border-[#F5F0E8]">
+          <button
+            onClick={() => setDescExpanded(!descExpanded)}
+            className="flex items-center gap-1.5 text-xs text-[#8B7B6B] mb-1.5"
+          >
+            <span>{descExpanded ? "▲" : "▼"}</span>
+            <span>AI가 읽은 소개글 확인</span>
+          </button>
+          {descExpanded && (
+            <p className="text-xs text-[#5a4f46] leading-relaxed whitespace-pre-wrap bg-[#F5F0E8] rounded-xl p-3">
+              {draft.description}
+            </p>
+          )}
         </div>
       )}
 

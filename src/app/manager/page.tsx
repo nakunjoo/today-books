@@ -24,7 +24,7 @@ export default async function ManagerPage() {
   const db = supabaseAdmin();
   const [{ data: drafts, error }, { data: approved }] = await Promise.all([
     db.from("drafts")
-      .select("id, status, theme, selection_reason, hook, caption, hashtags, content, created_at, title, author, cover_url, isbn13")
+      .select("id, status, theme, selection_reason, hook, caption, hashtags, content, created_at, title, author, cover_url, isbn13, description")
       .in("status", ["pending_input", "pending_review"])
       .order("created_at", { ascending: false }),
     db.from("drafts")
