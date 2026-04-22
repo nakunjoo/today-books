@@ -136,14 +136,16 @@ export function DraftCard({ draft }: { draft: Draft }) {
           </button>
         )}
         {draft.isbn13 && (
-          <a
-            href={`https://www.aladin.co.kr/shop/wproduct.aspx?ISBN=${draft.isbn13}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block mt-2 text-xs font-semibold text-[#C67856] underline underline-offset-2"
-          >
-            구매하러가기
-          </a>
+          <p className="text-sm mt-4">
+            <a
+              href={`https://www.aladin.co.kr/shop/wproduct.aspx?ISBN=${draft.isbn13}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#C67856] underline underline-offset-2 font-semibold"
+            >
+              구매하러가기
+            </a>
+          </p>
         )}
         {draft.hashtags?.length > 0 && (
           <p className="text-xs text-blue-500 mt-1.5 leading-relaxed">{draft.hashtags.join(" ")}</p>
