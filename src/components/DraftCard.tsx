@@ -29,9 +29,9 @@ export function DraftCard({ draft }: { draft: Draft }) {
   const [done, setDone] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
   const [captionExpanded, setCaptionExpanded] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [imageMime, setImageMime] = useState("image/jpeg");
+  const [images, setImages] = useState<string[]>([]); // 여러 장 base64 data URL
   const scrollRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   async function compressImage(file: File): Promise<string> {
     return new Promise((resolve) => {
@@ -52,13 +52,12 @@ export function DraftCard({ draft }: { draft: Draft }) {
   }
 
   async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImageMime("image/jpeg");
-    const compressed = await compressImage(file);
-    setImagePreview(compressed);
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    const compressed = await Promise.all(files.map(compressImage));
+    setImages((prev) => [...prev, ...compressed].slice(0, 5)); // 최대 5장
+    e.target.value = ""; // 같은 파일 재선택 허용
   }
-  const router = useRouter();
 
   if (done) return null;
 
@@ -83,14 +82,17 @@ export function DraftCard({ draft }: { draft: Draft }) {
   }
 
   async function handleGenerateContent() {
-    if (!imagePreview) return alert("스크린샷을 첨부해주세요");
+    if (images.length === 0) return alert("스크린샷을 첨부해주세요");
     setLoading("generate");
     try {
-      const base64 = imagePreview.split(",")[1];
+      const imageList = images.map((dataUrl) => ({
+        base64: dataUrl.split(",")[1],
+        mimeType: "image/jpeg",
+      }));
       const res = await fetch(`/api/admin/drafts/${draft.id}/generate-content`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: base64, mimeType: imageMime }),
+        body: JSON.stringify({ images: imageList }),
       });
       const data = await res.json();
       if (data.ok) router.refresh();
@@ -144,22 +146,32 @@ export function DraftCard({ draft }: { draft: Draft }) {
             )}
           </div>
 
-          {imagePreview ? (
-            <div className="relative rounded-xl overflow-hidden border border-[#EDE5D8]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={imagePreview} alt="스크린샷 미리보기" className="w-full object-contain max-h-64" />
-              <button
-                onClick={() => setImagePreview(null)}
-                className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded-lg"
-              >
-                다시 선택
-              </button>
+          {/* 이미지 미리보기 */}
+          {images.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-1 mb-2">
+              {images.map((src, i) => (
+                <div key={i} className="relative shrink-0 w-20 h-28 rounded-lg overflow-hidden border border-[#EDE5D8]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={src} alt={`스크린샷 ${i + 1}`} className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}
+                    className="absolute top-0.5 right-0.5 bg-black/60 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center leading-none"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
             </div>
-          ) : (
-            <label className="flex flex-col items-center justify-center gap-2 w-full h-32 border-2 border-dashed border-[#EDE5D8] rounded-xl cursor-pointer active:bg-[#F5F0E8] transition-colors">
-              <span className="text-2xl">📷</span>
-              <span className="text-xs text-[#8B7B6B]">스크린샷 첨부</span>
-              <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+          )}
+
+          {/* 추가 버튼 (5장 미만일 때만) */}
+          {images.length < 5 && (
+            <label className="flex items-center justify-center gap-2 w-full h-12 border-2 border-dashed border-[#EDE5D8] rounded-xl cursor-pointer active:bg-[#F5F0E8] transition-colors">
+              <span className="text-lg">📷</span>
+              <span className="text-xs text-[#8B7B6B]">
+                {images.length === 0 ? "스크린샷 첨부" : `추가 (${images.length}/5)`}
+              </span>
+              <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
             </label>
           )}
           <button

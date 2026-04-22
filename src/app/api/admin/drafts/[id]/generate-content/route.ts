@@ -7,23 +7,31 @@ import { generateText } from "ai";
 
 const groq = createGroq();
 
-async function extractDescriptionFromImage(imageBase64: string, mimeType: string): Promise<string> {
+type ImageInput = { base64: string; mimeType: string };
+
+async function extractDescriptionFromImages(imageList: ImageInput[]): Promise<string> {
+  const imageContent = imageList.map(({ base64, mimeType }) => ({
+    type: "image" as const,
+    image: new URL(`data:${mimeType};base64,${base64}`),
+  }));
+
   const { text } = await generateText({
     model: groq("meta-llama/llama-4-scout-17b-16e-instruct"),
     messages: [
       {
         role: "user",
         content: [
-          {
-            type: "image",
-            image: new URL(`data:${mimeType};base64,${imageBase64}`),
-          },
+          ...imageContent,
           {
             type: "text",
-            text: `이 알라딘 책 상세페이지 스크린샷에서 책 소개글과 목차 텍스트만 추출해줘.
-책 제목, 저자명, 가격, 별점, 버튼, 메뉴, 광고, UI 요소는 전부 제외하고
-책 내용을 설명하는 소개글과 목차만 원문 그대로 텍스트로 출력해줘.
-없으면 "소개글 없음"이라고만 출력해.`,
+            text: `위 스크린샷${imageList.length > 1 ? ` ${imageList.length}장` : ""}은 알라딘 책 상세페이지야.
+책 내용을 소개하는 글과 목차 텍스트만 추출해줘.
+
+규칙:
+- 책 제목, 저자명, 가격, 별점, 버튼, 메뉴, 광고, UI 요소 제외
+- 여러 장에서 중복되는 문장은 한 번만 포함
+- 내용이 이어지는 경우 자연스럽게 합쳐서 하나의 텍스트로 출력
+- 소개글이 전혀 없으면 "소개글 없음"이라고만 출력`,
           },
         ],
       },
@@ -57,9 +65,9 @@ export async function POST(
   try {
     let description: string;
 
-    if (body.imageBase64) {
-      // 이미지에서 소개글 추출
-      description = await extractDescriptionFromImage(body.imageBase64, body.mimeType ?? "image/jpeg");
+    if (Array.isArray(body.images) && body.images.length > 0) {
+      // 여러 이미지에서 소개글 추출 (중복 제거 포함)
+      description = await extractDescriptionFromImages(body.images);
       if (!description || description.includes("소개글 없음")) {
         return NextResponse.json({ ok: false, error: "이미지에서 소개글을 읽지 못했습니다. 책 소개 부분이 잘 보이는 스크린샷을 첨부해주세요." }, { status: 400 });
       }
