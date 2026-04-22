@@ -164,26 +164,28 @@ function KeyMessage({ data }: { data: { point?: number; title?: string; descript
   );
 }
 
-// ── 인용구
+// ── 한 줄 인상 (AI 창작 — 책 본문 인용 아님)
 function Quote({ data }: { data: { text?: string; context?: string } }) {
   return (
     <Card bg={BG_DARK}>
       <div style={{ position: "absolute", top: "50%", left: "50%", width: 800, height: 800, borderRadius: "50%", background: ACCENT, opacity: 0.04, transform: "translate(-50%,-50%)", display: "flex" }} />
 
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: 100, gap: 48, position: "relative" }}>
-        {/* 따옴표 */}
-        <div style={{ display: "flex", alignSelf: "flex-start" }}>
-          <span style={{ fontSize: 140, color: ACCENT, lineHeight: 0.6, fontWeight: 900 }}>"</span>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: 100, gap: 40, position: "relative" }}>
+        {/* 라벨 */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ width: 32, height: 2, background: ACCENT, borderRadius: 1, display: "flex" }} />
+          <span style={{ fontSize: 22, color: ACCENT, letterSpacing: 4, fontWeight: 600 }}>이 책이 건네는 말</span>
+          <div style={{ width: 32, height: 2, background: ACCENT, borderRadius: 1, display: "flex" }} />
         </div>
 
-        <span style={{ fontSize: 46, color: "#fff", lineHeight: 1.7, textAlign: "center", maxWidth: 880, fontStyle: "italic", display: "flex", flexWrap: "wrap", justifyContent: "center" }}>{data.text}</span>
+        <span style={{ fontSize: 46, color: "#fff", lineHeight: 1.75, textAlign: "center", maxWidth: 880, display: "flex", flexWrap: "wrap", justifyContent: "center" }}>{data.text}</span>
 
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-          <div style={{ width: 60, height: 3, background: ACCENT, borderRadius: 2, display: "flex" }} />
-          <span style={{ fontSize: 28, color: ACCENT }}>{data.context}</span>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+          <div style={{ width: 48, height: 2, background: "rgba(255,255,255,0.15)", borderRadius: 1, display: "flex" }} />
+          <span style={{ fontSize: 26, color: "rgba(255,255,255,0.45)", textAlign: "center", maxWidth: 800, display: "flex", flexWrap: "wrap", justifyContent: "center" }}>{data.context}</span>
         </div>
 
-        <span style={{ fontSize: 22, color: "rgba(255,255,255,0.15)", letterSpacing: 3, marginTop: 12 }}>todayBooks</span>
+        <span style={{ fontSize: 22, color: "rgba(255,255,255,0.15)", letterSpacing: 3, marginTop: 8 }}>todayBooks</span>
       </div>
     </Card>
   );

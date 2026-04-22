@@ -14,7 +14,6 @@ function buildSlideUrls(baseUrl: string, draftId: string, content: CardContentSc
     ...content.keyMessages.map((msg, i) =>
       `${baseUrl}/api/card/key?data=${enc({ point: i + 1, title: msg.title, description: msg.description, dark: i % 2 === 0 })}`
     ),
-    `${baseUrl}/api/card/quote?data=${enc({ text: content.quote.text, context: content.quote.context })}`,
     `${baseUrl}/api/card/closing?data=${enc({ oneLiner: content.closing.oneLiner, readingTime: content.closing.readingTime, title })}`,
   ];
 

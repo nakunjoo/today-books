@@ -41,7 +41,6 @@ export function DraftCard({ draft }: { draft: Draft }) {
     ...c.keyMessages.map((msg, i) =>
       cardUrl("key", { point: i + 1, title: msg.title, description: msg.description, dark: i % 2 === 0 })
     ),
-    cardUrl("quote", { text: c.quote.text, context: c.quote.context }),
     cardUrl("closing", { oneLiner: c.closing.oneLiner, readingTime: c.closing.readingTime, title: draft.title }),
   ] : [];
 

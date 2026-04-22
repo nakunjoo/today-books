@@ -15,10 +15,6 @@ export const cardContentSchema = z.object({
       description: z.string(),
     }),
   ).describe("책의 핵심 포인트 2~3가지"),
-  quote: z.object({
-    text: z.string().describe("출판사 소개에 공개된 짧은 구절 (없으면 핵심 메시지 한 줄)"),
-    context: z.string().describe("어떤 맥락의 문장인지"),
-  }),
   closing: z.object({
     oneLiner: z.string().describe("한 줄 총평"),
     readingTime: z.string().describe("예상 독서 시간"),
