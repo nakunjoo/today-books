@@ -31,6 +31,9 @@ export function DraftCard({ draft }: { draft: Draft }) {
   const [slideIndex, setSlideIndex] = useState(0);
   const [captionExpanded, setCaptionExpanded] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
+  const [inputMode, setInputMode] = useState<"existing" | "screenshot">(
+    "existing"
+  );
   const [images, setImages] = useState<string[]>([]); // 여러 장 base64 data URL
   const scrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -84,17 +87,27 @@ export function DraftCard({ draft }: { draft: Draft }) {
   }
 
   async function handleGenerateContent() {
-    if (images.length === 0) return alert("스크린샷을 첨부해주세요");
     setLoading("generate");
     try {
-      const imageList = images.map((dataUrl) => ({
-        base64: dataUrl.split(",")[1],
-        mimeType: "image/jpeg",
-      }));
+      let body: Record<string, unknown>;
+
+      if (inputMode === "existing") {
+        if (!draft.description?.trim()) return alert("저장된 소개글이 없습니다. 스크린샷을 첨부해주세요.");
+        body = { useExisting: true };
+      } else {
+        if (images.length === 0) return alert("스크린샷을 첨부해주세요");
+        body = {
+          images: images.map((dataUrl) => ({
+            base64: dataUrl.split(",")[1],
+            mimeType: "image/jpeg",
+          })),
+        };
+      }
+
       const res = await fetch(`/api/admin/drafts/${draft.id}/generate-content`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ images: imageList }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (data.ok) router.refresh();
@@ -134,47 +147,79 @@ export function DraftCard({ draft }: { draft: Draft }) {
       {/* 소개글 입력 대기 상태 */}
       {isPendingInput && (
         <div className="px-4 py-4 border-t border-[#F5F0E8]">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-[#2C2416]">알라딘 상세페이지 스크린샷</p>
-            {draft.isbn13 && (
-              <a
-                href={`https://www.aladin.co.kr/shop/wproduct.aspx?ISBN=${draft.isbn13}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-[#C67856] font-semibold underline underline-offset-2"
-              >
-                알라딘 페이지 열기
-              </a>
-            )}
+          {/* 모드 탭 */}
+          <div className="flex rounded-xl overflow-hidden border border-[#EDE5D8] mb-3">
+            <button
+              onClick={() => setInputMode("existing")}
+              className={`flex-1 py-2 text-xs font-semibold transition-colors ${inputMode === "existing" ? "bg-[#2C2416] text-white" : "bg-white text-[#8B7B6B]"}`}
+            >
+              기본 소개글 사용
+            </button>
+            <button
+              onClick={() => setInputMode("screenshot")}
+              className={`flex-1 py-2 text-xs font-semibold transition-colors ${inputMode === "screenshot" ? "bg-[#2C2416] text-white" : "bg-white text-[#8B7B6B]"}`}
+            >
+              스크린샷 첨부
+            </button>
           </div>
 
-          {/* 이미지 미리보기 */}
-          {images.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto pb-1 mb-2">
-              {images.map((src, i) => (
-                <div key={i} className="relative shrink-0 w-20 h-28 rounded-lg overflow-hidden border border-[#EDE5D8]">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={src} alt={`스크린샷 ${i + 1}`} className="w-full h-full object-cover" />
-                  <button
-                    onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}
-                    className="absolute top-0.5 right-0.5 bg-black/60 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center leading-none"
-                  >
-                    ×
-                  </button>
+          {/* 기본 소개글 모드 */}
+          {inputMode === "existing" && (
+            <div>
+              {draft.description?.trim() ? (
+                <p className="text-xs text-[#5a4f46] leading-relaxed bg-[#F5F0E8] rounded-xl p-3 max-h-36 overflow-y-auto whitespace-pre-wrap">
+                  {draft.description}
+                </p>
+              ) : (
+                <div className="flex flex-col items-center gap-1.5 py-4 text-center">
+                  <p className="text-xs text-[#8B7B6B]">저장된 소개글이 없어요.</p>
+                  <p className="text-xs text-[#C0B4A8]">스크린샷 첨부를 이용해주세요.</p>
                 </div>
-              ))}
+              )}
             </div>
           )}
 
-          {/* 추가 버튼 (5장 미만일 때만) */}
-          {images.length < 5 && (
-            <label className="flex items-center justify-center gap-2 w-full h-12 border-2 border-dashed border-[#EDE5D8] rounded-xl cursor-pointer active:bg-[#F5F0E8] transition-colors">
-              <span className="text-lg">📷</span>
-              <span className="text-xs text-[#8B7B6B]">
-                {images.length === 0 ? "스크린샷 첨부" : `추가 (${images.length}/5)`}
-              </span>
-              <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
-            </label>
+          {/* 스크린샷 모드 */}
+          {inputMode === "screenshot" && (
+            <div>
+              {draft.isbn13 && (
+                <div className="flex justify-end mb-2">
+                  <a
+                    href={`https://www.aladin.co.kr/shop/wproduct.aspx?ISBN=${draft.isbn13}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-[#C67856] font-semibold underline underline-offset-2"
+                  >
+                    알라딘 페이지 열기
+                  </a>
+                </div>
+              )}
+              {images.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto pb-1 mb-2">
+                  {images.map((src, i) => (
+                    <div key={i} className="relative shrink-0 w-20 h-28 rounded-lg overflow-hidden border border-[#EDE5D8]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={src} alt={`스크린샷 ${i + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}
+                        className="absolute top-0.5 right-0.5 bg-black/60 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center leading-none"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {images.length < 5 && (
+                <label className="flex items-center justify-center gap-2 w-full h-12 border-2 border-dashed border-[#EDE5D8] rounded-xl cursor-pointer active:bg-[#F5F0E8] transition-colors">
+                  <span className="text-lg">📷</span>
+                  <span className="text-xs text-[#8B7B6B]">
+                    {images.length === 0 ? "스크린샷 첨부" : `추가 (${images.length}/5)`}
+                  </span>
+                  <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
+                </label>
+              )}
+            </div>
           )}
           <button
             onClick={handleGenerateContent}

@@ -65,8 +65,14 @@ export async function POST(
   try {
     let description: string;
 
-    if (Array.isArray(body.images) && body.images.length > 0) {
-      // 여러 이미지에서 소개글 추출 (중복 제거 포함)
+    if (body.useExisting) {
+      // DB에 저장된 기본 소개글 사용
+      if (!draft.description?.trim()) {
+        return NextResponse.json({ ok: false, error: "저장된 소개글이 없습니다." }, { status: 400 });
+      }
+      description = draft.description;
+    } else if (Array.isArray(body.images) && body.images.length > 0) {
+      // 스크린샷에서 소개글 추출
       description = await extractDescriptionFromImages(body.images);
       if (!description || description.includes("소개글 없음")) {
         return NextResponse.json({ ok: false, error: "이미지에서 소개글을 읽지 못했습니다. 책 소개 부분이 잘 보이는 스크린샷을 첨부해주세요." }, { status: 400 });
