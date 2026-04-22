@@ -13,7 +13,7 @@ export default async function Home() {
   const db = supabaseAdmin();
   const { data: drafts, error } = await db
     .from("drafts")
-    .select("id, status, theme, selection_reason, hook, caption, hashtags, content, created_at, title, author, cover_url")
+    .select("id, status, theme, selection_reason, hook, caption, hashtags, content, created_at, title, author, cover_url, isbn13")
     .eq("status", "pending_review")
     .order("created_at", { ascending: false });
 

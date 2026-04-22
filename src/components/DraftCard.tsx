@@ -16,6 +16,7 @@ export type Draft = {
   title: string | null;
   author: string | null;
   cover_url: string | null;
+  isbn13: string | null;
 };
 
 function cardUrl(slide: string, data: Record<string, unknown>) {
@@ -133,6 +134,16 @@ export function DraftCard({ draft }: { draft: Draft }) {
           <button onClick={() => setCaptionExpanded(!captionExpanded)} className="text-xs text-[#8B7B6B] mt-0.5">
             {captionExpanded ? "접기" : "더 보기"}
           </button>
+        )}
+        {draft.isbn13 && (
+          <a
+            href={`https://www.aladin.co.kr/shop/wproduct.aspx?ISBN=${draft.isbn13}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block mt-2 text-xs font-semibold text-[#C67856] underline underline-offset-2"
+          >
+            구매하러가기
+          </a>
         )}
         {draft.hashtags?.length > 0 && (
           <p className="text-xs text-blue-500 mt-1.5 leading-relaxed">{draft.hashtags.join(" ")}</p>
