@@ -14,9 +14,8 @@ export async function POST(
 
   const { error } = await db
     .from("drafts")
-    .update({ status: "rejected" })
-    .eq("id", id)
-    .eq("status", "pending_review");
+    .delete()
+    .eq("id", id);
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
 

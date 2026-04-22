@@ -25,7 +25,7 @@ export default async function ManagerPage() {
   const [{ data: drafts, error }, { data: approved }] = await Promise.all([
     db.from("drafts")
       .select("id, status, theme, selection_reason, hook, caption, hashtags, content, created_at, title, author, cover_url, isbn13")
-      .eq("status", "pending_review")
+      .in("status", ["pending_input", "pending_review"])
       .order("created_at", { ascending: false }),
     db.from("drafts")
       .select("id, title, author, cover_url, isbn13, created_at")
@@ -66,7 +66,7 @@ export default async function ManagerPage() {
             </div>
           ) : (
             <>
-              <p className="text-sm font-semibold text-[#2C2416] mb-3">검토 대기 {drafts.length}건</p>
+              <p className="text-sm font-semibold text-[#2C2416] mb-3">대기 {drafts.length}건</p>
               <div className="flex flex-col gap-3">
                 {(drafts as Draft[]).map((draft) => (
                   <DraftCard key={draft.id} draft={draft} />

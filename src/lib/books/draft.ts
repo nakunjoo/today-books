@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { generateCardContent, themeForDate } from "@/lib/ai/generate-card";
+import { themeForDate } from "@/lib/ai/generate-card";
 import { selectTodaysBook } from "@/lib/books/select";
 
 export async function createDraft() {
@@ -8,15 +8,10 @@ export async function createDraft() {
 
   const { book, reason, hook } = await selectTodaysBook(theme);
 
-  const content = await generateCardContent(
-    { title: book.title, author: book.author ?? "", description: book.description ?? "", toc: book.toc ?? undefined },
-    { theme, selectionReason: reason },
-  );
-
   const { data: draft, error } = await db
     .from("drafts")
     .insert({
-      status: "pending_review",
+      status: "pending_input",
       theme,
       selection_reason: reason,
       hook,
@@ -27,9 +22,6 @@ export async function createDraft() {
       cover_url: book.cover_url,
       description: book.description,
       toc: book.toc,
-      content,
-      caption: content.caption,
-      hashtags: content.hashtags,
       image_urls: [],
     })
     .select()
@@ -37,5 +29,5 @@ export async function createDraft() {
 
   if (error) throw new Error(`초안 저장 실패: ${error.message}`);
 
-  return { draft, book, content };
+  return { draft, book };
 }
