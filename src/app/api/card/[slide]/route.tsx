@@ -43,7 +43,7 @@ function Card({ bg, children }: { bg: string; children: React.ReactNode }) {
 }
 
 // ── 커버
-function Cover({ data }: { data: { hook?: string; theme?: string; title?: string; author?: string } }) {
+function Cover({ data }: { data: { hook?: string; title?: string; author?: string } }) {
   return (
     <Card bg={BG_DARK}>
       {/* 배경 장식 */}
@@ -54,7 +54,7 @@ function Cover({ data }: { data: { hook?: string; theme?: string; title?: string
         {/* 상단 */}
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: ACCENT, display: "flex" }} />
-          <span style={{ fontSize: 26, color: ACCENT, letterSpacing: 6, textTransform: "uppercase", fontWeight: 600 }}>{data.theme ?? "오늘의 책"}</span>
+          <span style={{ fontSize: 26, color: ACCENT, letterSpacing: 6, textTransform: "uppercase", fontWeight: 600 }}>오늘의 책</span>
         </div>
 
         {/* 중앙 */}

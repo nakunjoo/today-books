@@ -8,7 +8,7 @@ function buildSlideUrls(baseUrl: string, draftId: string, content: CardContentSc
   const enc = (d: Record<string, unknown>) => encodeURIComponent(JSON.stringify(d));
 
   const urls = [
-    `${baseUrl}/api/card/cover?data=${enc({ hook: content.cover.hook, theme: content.cover.theme, title, author })}`,
+    `${baseUrl}/api/card/cover?data=${enc({ hook: content.cover.hook, title, author })}`,
     `${baseUrl}/api/card/book?data=${enc({ title, author, coverUrl, selectionReason })}`,
     `${baseUrl}/api/card/target?data=${enc({ title: content.targetReader.title, items: content.targetReader.items })}`,
     ...content.keyMessages.map((msg, i) =>

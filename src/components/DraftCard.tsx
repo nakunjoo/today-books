@@ -34,7 +34,7 @@ export function DraftCard({ draft }: { draft: Draft }) {
   const c = draft.content;
 
   const slides = c ? [
-    cardUrl("cover", { hook: c.cover.hook, theme: c.cover.theme, title: draft.title, author: draft.author }),
+    cardUrl("cover", { hook: c.cover.hook, title: draft.title, author: draft.author }),
     cardUrl("book", { title: draft.title, author: draft.author, coverUrl: draft.cover_url, selectionReason: draft.selection_reason }),
     cardUrl("target", { title: c.targetReader.title, items: c.targetReader.items }),
     ...c.keyMessages.map((msg, i) =>
