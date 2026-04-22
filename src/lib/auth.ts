@@ -13,7 +13,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     authorized({ auth, request }) {
       const isAdminRoute =
-        request.nextUrl.pathname.startsWith("/admin") ||
+        request.nextUrl.pathname.startsWith("/manager") ||
         request.nextUrl.pathname.startsWith("/api/admin");
 
       if (!isAdminRoute) return true;
