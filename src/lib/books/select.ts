@@ -19,16 +19,19 @@ export async function selectTodaysBook(theme?: string) {
   const db = supabaseAdmin();
   const todayTheme = theme ?? themeForDate();
 
-  // 최근 90일 내 사용된 ISBN 수집 (draft에서)
+  // 승인된 책은 영구 제외, 대기 중인 초안은 90일 이내만 제외
   const since = new Date();
   since.setDate(since.getDate() - 90);
-  const { data: recentDrafts } = await db
-    .from("drafts")
-    .select("isbn13")
-    .gte("created_at", since.toISOString())
-    .not("isbn13", "is", null);
 
-  const usedIsbns = new Set((recentDrafts ?? []).map((d) => d.isbn13).filter(Boolean));
+  const [{ data: approvedDrafts }, { data: recentDrafts }] = await Promise.all([
+    db.from("drafts").select("isbn13").eq("status", "approved").not("isbn13", "is", null),
+    db.from("drafts").select("isbn13").neq("status", "approved").gte("created_at", since.toISOString()).not("isbn13", "is", null),
+  ]);
+
+  const usedIsbns = new Set([
+    ...(approvedDrafts ?? []).map((d) => d.isbn13),
+    ...(recentDrafts ?? []).map((d) => d.isbn13),
+  ].filter(Boolean));
 
   // 알라딘에서 신간 + 베스트셀러 fetch
   const [newBooks, bestBooks] = await Promise.all([
