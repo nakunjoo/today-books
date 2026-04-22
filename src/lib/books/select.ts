@@ -7,7 +7,13 @@ import { themeForDate } from "@/lib/ai/generate-card";
 
 const groq = createGroq();
 
-const EXCLUDE_CATEGORIES = ["만화", "라이트노벨", "Comics", "Manga"];
+const EXCLUDE_CATEGORIES = [
+  "만화", "라이트노벨", "Comics", "Manga",
+  "어린이", "아동", "유아",
+  "종교", "기독교", "불교", "천주교", "이슬람",
+  "수험서", "자격증",
+  "초등", "중학", "고등", "교과서",
+];
 
 export async function selectTodaysBook(theme?: string) {
   const db = supabaseAdmin();
@@ -49,16 +55,20 @@ export async function selectTodaysBook(theme?: string) {
     schema: z.object({
       selectedIsbn: z.string().describe("선택한 책의 isbn13"),
       reason: z.string().describe("왜 오늘 이 책인지 (1~2문장)"),
-      hook: z.string().max(40).describe("팔로워 관심을 끌 한 문장"),
+      hook: z.string().describe("팔로워 관심을 끌 한 문장"),
     }),
     prompt: `
-오늘의 테마: "${todayTheme}"
-
 후보 도서 목록:
 ${pool.map((b) => `- isbn13: ${b.isbn13}\n  제목: ${b.title}\n  저자: ${b.author}\n  소개: ${(b.description ?? "").slice(0, 150)}`).join("\n\n")}
 
-위 후보 중 오늘의 테마에 가장 잘 어울리는 책 1권을 골라줘.
-인기 때문이 아니라, 오늘 이 책을 소개하기에 좋은 맥락이 있어야 해.
+위 후보 중 오늘 소개할 책 1권을 골라줘.
+
+선정 기준:
+- 성인 누구나 읽기 좋은 책 (특정 직업·종교·연령·성별에만 해당하는 책 제외)
+- 문학, 에세이, 자기계발, 역사, 과학, 사회 등 일반 독자층이 넓은 분야 우선
+- 단순 인기 순위가 아니라, 지금 이 시점에 읽으면 의미 있을 책
+- 소개했을 때 공감대가 넓고 이야기거리가 있는 책
+
 한국어로 답변.
     `.trim(),
   });
