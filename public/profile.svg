@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 500 500">
+  <!-- 배경 -->
+  <rect width="500" height="500" fill="#2C2416"/>
+
+  <!-- 배경 원 장식 -->
+  <circle cx="420" cy="80" r="160" fill="#C67856" opacity="0.1"/>
+  <circle cx="80" cy="420" r="120" fill="#D4895A" opacity="0.08"/>
+
+  <!-- 책 아이콘 박스 -->
+  <rect x="190" y="130" width="120" height="120" rx="28" fill="#C67856"/>
+  <!-- 책 줄 -->
+  <rect x="214" y="172" width="72" height="10" rx="5" fill="white" opacity="0.9"/>
+  <rect x="214" y="190" width="72" height="10" rx="5" fill="white" opacity="0.7"/>
+  <rect x="214" y="208" width="52" height="10" rx="5" fill="white" opacity="0.5"/>
+
+  <!-- 텍스트: todayBooks -->
+  <text x="250" y="320" font-family="Arial, sans-serif" font-size="54" font-weight="800" fill="white" text-anchor="middle" letter-spacing="-1">Today<tspan fill="#C67856">Books</tspan></text>
+
+  <!-- 구분선 -->
+  <rect x="226" y="334" width="48" height="3" rx="1.5" fill="#C67856"/>
+
+  <!-- 서브텍스트 -->
+  <text x="250" y="368" font-family="Arial, sans-serif" font-size="20" fill="rgba(255,255,255,0.4)" text-anchor="middle" letter-spacing="3">매일 한 권</text>
+</svg>
