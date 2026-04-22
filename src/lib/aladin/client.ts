@@ -67,7 +67,7 @@ export async function fetchAladinDetail(isbn13: string) {
     ItemId: isbn13,
     Output: "JS",
     Version: "20131101",
-    OptResult: "authors,fulldescription,Toc",
+    OptResult: "authors,fulldescription,Toc,Story,cardReview",
   });
   const res = await fetch(`${ALADIN_BASE}/ItemLookUp.aspx?${params}`, {
     cache: "no-store",
