@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { DraftCard, type Draft } from "@/components/DraftCard";
 import { GenerateButton } from "@/components/GenerateButton";
 import { ApprovedList } from "@/components/ApprovedList";
+import { DebugButton } from "@/components/DebugButton";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,7 @@ export default async function ManagerPage() {
         <div className="flex items-center gap-3">
           <span className="font-bold text-base tracking-tight">📚 todayBooks</span>
           <GenerateButton />
+          <DebugButton />
         </div>
         <form
           action={async () => {
