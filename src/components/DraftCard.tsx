@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import Image from "next/image";
 import type { CardContentSchema } from "@/lib/ai/schema";
 
 export type Draft = {
@@ -67,21 +66,15 @@ export function DraftCard({ draft }: { draft: Draft }) {
     <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
       {/* 인스타 헤더 */}
       <div className="flex items-center gap-2.5 px-3 py-2.5">
-        {draft.cover_url ? (
-          <Image
-            src={draft.cover_url}
-            alt={draft.title ?? ""}
-            width={36}
-            height={36}
-            className="rounded-full object-cover w-9 h-9 border-2 border-[#C67856]"
-            unoptimized
-          />
-        ) : (
-          <div className="w-9 h-9 rounded-full bg-[#F5F0E8] border-2 border-[#C67856] flex items-center justify-center text-xs">📚</div>
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/profile.svg"
+          alt="today_bookpt"
+          className="w-9 h-9 rounded-full border-2 border-[#C67856] object-cover shrink-0"
+        />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-[#2C2416] leading-none truncate">{draft.title ?? "제목 없음"}</p>
-          <p className="text-xs text-[#8B7B6B] mt-0.5">{draft.author}</p>
+          <p className="text-sm font-semibold text-[#2C2416] leading-none">today_bookpt</p>
+          <p className="text-xs text-[#8B7B6B] mt-0.5 truncate">{draft.title}</p>
         </div>
         <span className="text-xs text-[#8B7B6B] shrink-0">
           {new Date(draft.created_at).toLocaleString("ko-KR", {
@@ -134,19 +127,7 @@ export function DraftCard({ draft }: { draft: Draft }) {
             {captionExpanded ? "접기" : "더 보기"}
           </button>
         )}
-        {draft.isbn13 && (
-          <p className="text-sm mt-4">
-            <a
-              href={`https://www.aladin.co.kr/shop/wproduct.aspx?ISBN=${draft.isbn13}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#C67856] underline underline-offset-2 font-semibold"
-            >
-              구매하러가기
-            </a>
-          </p>
-        )}
-        {draft.hashtags?.length > 0 && (
+{draft.hashtags?.length > 0 && (
           <p className="text-xs text-blue-500 mt-1.5 leading-relaxed">{draft.hashtags.join(" ")}</p>
         )}
       </div>
