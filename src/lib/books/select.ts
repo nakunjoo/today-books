@@ -7,10 +7,13 @@ import { themeForDate } from "@/lib/ai/generate-card";
 
 const groq = createGroq();
 
+// 소설 전용 카테고리 ID 목록
+const NOVEL_CATEGORY_IDS = [50998, 50920, 50919, 50993, 89481, 50994, 50922, 89482, 51538, 51032];
+
 const EXCLUDE_CATEGORIES = [
   // 장르 소설 (시리즈물)
   "판타지", "무협소설", "호러", "공포",
-  // 시/희곡
+  // 시/희곡 (혹시 섞여 들어오는 경우 대비)
   "시>", "희곡", "문학 잡지", "우리나라 옛글",
   // 아동/청소년
   "어린이", "아동", "유아",
@@ -52,11 +55,13 @@ export async function selectTodaysBook(theme?: string) {
     ...(recentDrafts ?? []).map((d) => d.isbn13),
   ].filter(Boolean));
 
-  // 소설 카테고리(ID:1) 신간 + 베스트셀러 fetch
-  const [newBooks, bestBooks] = await Promise.all([
-    fetchAladinList({ queryType: "ItemNewAll", max: 50, categoryId: 1 }),
-    fetchAladinList({ queryType: "Bestseller", max: 50, categoryId: 1 }),
+  // 소설 카테고리 ID별 신간 + 베스트셀러 병렬 fetch
+  const [newResults, bestResults] = await Promise.all([
+    Promise.all(NOVEL_CATEGORY_IDS.map((id) => fetchAladinList({ queryType: "ItemNewAll", max: 10, categoryId: id }))),
+    Promise.all(NOVEL_CATEGORY_IDS.map((id) => fetchAladinList({ queryType: "Bestseller", max: 10, categoryId: id }))),
   ]);
+  const newBooks = newResults.flat();
+  const bestBooks = bestResults.flat();
 
   console.log("=== 알라딘 신간 원본 ===");
   console.log(JSON.stringify(newBooks, null, 2));
