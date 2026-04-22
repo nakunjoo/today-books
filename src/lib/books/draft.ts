@@ -28,7 +28,7 @@ export async function createDraft() {
       description: book.description,
       toc: book.toc,
       content,
-      caption: content.caption,
+      caption: `${content.caption}\n\n📖 알라딘에서 보기: https://www.aladin.co.kr/shop/wproduct.aspx?ISBN=${book.isbn13}`,
       hashtags: content.hashtags,
       image_urls: [],
     })
