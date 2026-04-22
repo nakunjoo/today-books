@@ -31,10 +31,10 @@ export function DraftCard({ draft }: { draft: Draft }) {
   const [slideIndex, setSlideIndex] = useState(0);
   const [captionExpanded, setCaptionExpanded] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
-  const [inputMode, setInputMode] = useState<"existing" | "screenshot">(
-    "existing"
-  );
-  const [images, setImages] = useState<string[]>([]); // 여러 장 base64 data URL
+  const [inputMode, setInputMode] = useState<"existing" | "screenshot">("existing");
+  const [images, setImages] = useState<string[]>([]);
+  const [extractedDesc, setExtractedDesc] = useState<string | null>(null);
+  const [chosenDesc, setChosenDesc] = useState<"existing" | "extracted" | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -86,13 +86,41 @@ export function DraftCard({ draft }: { draft: Draft }) {
     setSlideIndex(index);
   }
 
+  async function handleExtract() {
+    if (images.length === 0) return alert("스크린샷을 첨부해주세요");
+    setLoading("extract");
+    try {
+      const res = await fetch(`/api/admin/drafts/${draft.id}/extract-description`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          images: images.map((dataUrl) => ({ base64: dataUrl.split(",")[1], mimeType: "image/jpeg" })),
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setExtractedDesc(data.description);
+        setChosenDesc(null);
+      } else {
+        alert(`실패: ${data.error}`);
+      }
+    } finally {
+      setLoading(null);
+    }
+  }
+
   async function handleGenerateContent() {
     setLoading("generate");
     try {
       let body: Record<string, unknown>;
 
-      if (inputMode === "existing") {
-        if (!draft.description?.trim()) return alert("저장된 소개글이 없습니다. 스크린샷을 첨부해주세요.");
+      if (inputMode === "screenshot" && chosenDesc !== null) {
+        // 비교 후 선택한 쪽으로 생성
+        body = chosenDesc === "extracted"
+          ? { description: extractedDesc }
+          : { useExisting: true };
+      } else if (inputMode === "existing") {
+        if (!draft.description?.trim()) return alert("저장된 소개글이 없습니다.");
         body = { useExisting: true };
       } else {
         if (images.length === 0) return alert("스크린샷을 첨부해주세요");
@@ -182,51 +210,105 @@ export function DraftCard({ draft }: { draft: Draft }) {
           {/* 스크린샷 모드 */}
           {inputMode === "screenshot" && (
             <div>
-              {draft.isbn13 && (
-                <div className="flex justify-end mb-2">
-                  <a
-                    href={`https://www.aladin.co.kr/shop/wproduct.aspx?ISBN=${draft.isbn13}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-[#C67856] font-semibold underline underline-offset-2"
-                  >
-                    알라딘 페이지 열기
-                  </a>
-                </div>
-              )}
-              {images.length > 0 && (
-                <div className="flex gap-2 overflow-x-auto pb-1 mb-2">
-                  {images.map((src, i) => (
-                    <div key={i} className="relative shrink-0 w-20 h-28 rounded-lg overflow-hidden border border-[#EDE5D8]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={src} alt={`스크린샷 ${i + 1}`} className="w-full h-full object-cover" />
-                      <button
-                        onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}
-                        className="absolute top-0.5 right-0.5 bg-black/60 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center leading-none"
+              {/* 이미지 업로드 영역 */}
+              {!extractedDesc && (
+                <>
+                  {draft.isbn13 && (
+                    <div className="flex justify-end mb-2">
+                      <a
+                        href={`https://www.aladin.co.kr/shop/wproduct.aspx?ISBN=${draft.isbn13}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-[#C67856] font-semibold underline underline-offset-2"
                       >
-                        ×
-                      </button>
+                        알라딘 페이지 열기
+                      </a>
                     </div>
-                  ))}
-                </div>
+                  )}
+                  {images.length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto pb-1 mb-2">
+                      {images.map((src, i) => (
+                        <div key={i} className="relative shrink-0 w-20 h-28 rounded-lg overflow-hidden border border-[#EDE5D8]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={src} alt={`스크린샷 ${i + 1}`} className="w-full h-full object-cover" />
+                          <button
+                            onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}
+                            className="absolute top-0.5 right-0.5 bg-black/60 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center leading-none"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {images.length < 5 && (
+                    <label className="flex items-center justify-center gap-2 w-full h-12 border-2 border-dashed border-[#EDE5D8] rounded-xl cursor-pointer active:bg-[#F5F0E8] transition-colors">
+                      <span className="text-lg">📷</span>
+                      <span className="text-xs text-[#8B7B6B]">
+                        {images.length === 0 ? "스크린샷 첨부" : `추가 (${images.length}/5)`}
+                      </span>
+                      <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
+                    </label>
+                  )}
+                  {images.length > 0 && (
+                    <button
+                      onClick={handleExtract}
+                      disabled={loading !== null}
+                      className="w-full mt-2 bg-[#EDE5D8] text-[#2C2416] py-2 rounded-xl text-xs font-semibold disabled:opacity-50"
+                    >
+                      {loading === "extract" ? "소개글 추출 중…" : "소개글 추출해서 비교하기"}
+                    </button>
+                  )}
+                </>
               )}
-              {images.length < 5 && (
-                <label className="flex items-center justify-center gap-2 w-full h-12 border-2 border-dashed border-[#EDE5D8] rounded-xl cursor-pointer active:bg-[#F5F0E8] transition-colors">
-                  <span className="text-lg">📷</span>
-                  <span className="text-xs text-[#8B7B6B]">
-                    {images.length === 0 ? "스크린샷 첨부" : `추가 (${images.length}/5)`}
-                  </span>
-                  <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
-                </label>
+
+              {/* 비교 화면 */}
+              {extractedDesc && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-[#2C2416]">어떤 소개글로 슬라이드 만들까요?</p>
+
+                  {/* 기본 소개글 */}
+                  <button
+                    onClick={() => setChosenDesc("existing")}
+                    className={`w-full text-left rounded-xl border-2 p-3 transition-colors ${chosenDesc === "existing" ? "border-[#C67856] bg-[#FFF7F3]" : "border-[#EDE5D8] bg-[#F5F0E8]"}`}
+                  >
+                    <p className="text-xs font-semibold text-[#8B7B6B] mb-1">📦 알라딘 API 소개글</p>
+                    <p className="text-xs text-[#5a4f46] leading-relaxed line-clamp-4 whitespace-pre-wrap">
+                      {draft.description?.trim() || "(없음)"}
+                    </p>
+                  </button>
+
+                  {/* 스크린샷 추출 */}
+                  <button
+                    onClick={() => setChosenDesc("extracted")}
+                    className={`w-full text-left rounded-xl border-2 p-3 transition-colors ${chosenDesc === "extracted" ? "border-[#C67856] bg-[#FFF7F3]" : "border-[#EDE5D8] bg-[#F5F0E8]"}`}
+                  >
+                    <p className="text-xs font-semibold text-[#8B7B6B] mb-1">📷 스크린샷 추출 소개글</p>
+                    <p className="text-xs text-[#5a4f46] leading-relaxed line-clamp-4 whitespace-pre-wrap">
+                      {extractedDesc}
+                    </p>
+                  </button>
+
+                  <button
+                    onClick={() => { setExtractedDesc(null); setChosenDesc(null); }}
+                    className="text-xs text-[#8B7B6B] underline underline-offset-2"
+                  >
+                    다시 스크린샷 선택
+                  </button>
+                </div>
               )}
             </div>
           )}
           <button
             onClick={handleGenerateContent}
-            disabled={loading !== null}
+            disabled={loading !== null || (inputMode === "screenshot" && extractedDesc !== null && chosenDesc === null)}
             className="w-full mt-3 bg-[#C67856] text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 active:scale-95 transition-transform"
           >
-            {loading === "generate" ? "슬라이드 생성 중…" : "슬라이드 생성"}
+            {loading === "generate"
+              ? "슬라이드 생성 중…"
+              : inputMode === "screenshot" && extractedDesc && chosenDesc === null
+                ? "소개글을 선택해주세요"
+                : "슬라이드 생성"}
           </button>
           <button
             onClick={() => handleAction("reject")}
