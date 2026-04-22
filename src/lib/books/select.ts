@@ -8,11 +8,20 @@ import { themeForDate } from "@/lib/ai/generate-card";
 const groq = createGroq();
 
 const EXCLUDE_CATEGORIES = [
+  // 만화/장르
   "만화", "라이트노벨", "Comics", "Manga",
-  "어린이", "아동", "유아",
+  // 아동/청소년
+  "어린이", "아동", "유아", "초등", "중학", "고등", "청소년",
+  // 종교
   "종교", "기독교", "불교", "천주교", "이슬람",
-  "수험서", "자격증",
-  "초등", "중학", "고등", "교과서",
+  // 수험/학습
+  "수험서", "자격증", "교과서", "외국어", "토익", "토플", "한국어",
+  // 전문서/교재
+  "대학교재", "전문서적", "악보", "법률", "의학", "간호",
+  // 잡지/정기간행물
+  "정기간행물", "잡지", "호",
+  // 취미 실기
+  "드로잉", "뜨개질", "요리", "바느질",
 ];
 
 export async function selectTodaysBook(theme?: string) {
@@ -62,7 +71,7 @@ export async function selectTodaysBook(theme?: string) {
     }),
     prompt: `
 후보 도서 목록:
-${pool.map((b) => `- isbn13: ${b.isbn13}\n  제목: ${b.title}\n  저자: ${b.author}\n  소개: ${(b.description ?? "").slice(0, 150)}`).join("\n\n")}
+${pool.map((b) => `- isbn13: ${b.isbn13}\n  제목: ${b.title}\n  저자: ${b.author}\n  카테고리: ${b.categoryName ?? ""}\n  소개: ${(b.description ?? "").slice(0, 300)}`).join("\n\n")}
 
 위 후보 중 오늘 소개할 책 1권을 골라줘.
 
