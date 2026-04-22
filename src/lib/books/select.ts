@@ -54,6 +54,11 @@ export async function selectTodaysBook(theme?: string) {
     fetchAladinList({ queryType: "Bestseller", max: 50 }),
   ]);
 
+  console.log("=== 알라딘 신간 원본 ===");
+  console.log(JSON.stringify(newBooks, null, 2));
+  console.log("=== 알라딘 베스트셀러 원본 ===");
+  console.log(JSON.stringify(bestBooks, null, 2));
+
   const seen = new Set<string>();
   const candidates = [...newBooks, ...bestBooks].filter((b) => {
     if (!b.isbn13 || seen.has(b.isbn13)) return false;
