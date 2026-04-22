@@ -18,6 +18,10 @@ export type Draft = {
   cover_url: string | null;
 };
 
+function cardUrl(slide: string, data: Record<string, unknown>) {
+  return `/api/card/${slide}?data=${encodeURIComponent(JSON.stringify(data))}`;
+}
+
 export function DraftCard({ draft }: { draft: Draft }) {
   const [loading, setLoading] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -30,98 +34,14 @@ export function DraftCard({ draft }: { draft: Draft }) {
   const c = draft.content;
 
   const slides = c ? [
-    // 커버 — 책 이미지 + 훅
-    <div key="cover" className="shrink-0 w-full aspect-square bg-[#2C2416] flex flex-col relative overflow-hidden">
-      {draft.cover_url && (
-        <Image
-          src={draft.cover_url}
-          alt={draft.title ?? ""}
-          fill
-          className="object-cover opacity-30"
-          unoptimized
-        />
-      )}
-      <div className="relative z-10 flex flex-col h-full justify-between p-6">
-        <p className="text-xs text-[#C67856] font-semibold tracking-widest uppercase">{c.cover.theme}</p>
-        <div>
-          <p className="text-xl font-bold text-white leading-snug mb-2">"{c.cover.hook}"</p>
-          <p className="text-sm text-[#C67856]">《{draft.title}》</p>
-          <p className="text-xs text-white/60 mt-1">{draft.author}</p>
-        </div>
-      </div>
-    </div>,
-
-    // 책 표지 슬라이드
-    <div key="bookcover" className="shrink-0 w-full aspect-square bg-[#1A1510] flex items-center justify-center relative overflow-hidden">
-      {draft.cover_url && (
-        <Image
-          src={draft.cover_url}
-          alt={draft.title ?? ""}
-          fill
-          className="object-cover opacity-10"
-          unoptimized
-        />
-      )}
-      {draft.cover_url ? (
-        <div className="relative z-10 flex flex-col items-center gap-4">
-          <Image
-            src={draft.cover_url}
-            alt={draft.title ?? ""}
-            width={140}
-            height={200}
-            className="object-contain rounded shadow-2xl"
-            unoptimized
-          />
-          <p className="text-white text-sm font-semibold text-center px-4">《{draft.title}》</p>
-        </div>
-      ) : (
-        <p className="text-white text-4xl">📚</p>
-      )}
-    </div>,
-
-    // 대상 독자
-    <div key="target" className="shrink-0 w-full aspect-square bg-[#F5F0E8] flex flex-col justify-center p-8">
-      <p className="text-xs text-[#C67856] font-semibold mb-5 tracking-wide text-center">{c.targetReader.title}</p>
-      <ul className="space-y-3">
-        {c.targetReader.items.map((item, i) => (
-          <li key={i} className="text-sm text-[#2C2416] flex gap-2.5 items-start">
-            <span className="text-[#C67856] font-bold shrink-0">✓</span>
-            <span className="leading-relaxed">{item}</span>
-          </li>
-        ))}
-      </ul>
-    </div>,
-
-    // 핵심 메시지들
-    ...c.keyMessages.map((msg, i) => (
-      <div key={`key-${i}`} className={`shrink-0 w-full aspect-square flex flex-col justify-center items-center p-8 text-center ${i % 2 === 0 ? "bg-[#2C2416]" : "bg-[#F5F0E8]"}`}>
-        <p className="text-xs text-[#C67856] font-semibold mb-4 tracking-widest">POINT {i + 1}</p>
-        <p className={`text-base font-bold mb-4 leading-snug ${i % 2 === 0 ? "text-white" : "text-[#2C2416]"}`}>{msg.title}</p>
-        <div className="w-8 h-0.5 bg-[#C67856] mb-4" />
-        <p className={`text-xs leading-relaxed ${i % 2 === 0 ? "text-white/70" : "text-[#8B7B6B]"}`}>{msg.description}</p>
-      </div>
-    )),
-
-    // 인용구
-    <div key="quote" className="shrink-0 w-full aspect-square bg-[#2C2416] flex flex-col justify-center items-center p-8 text-center relative overflow-hidden">
-      {draft.cover_url && (
-        <Image src={draft.cover_url} alt="" fill className="object-cover opacity-10" unoptimized />
-      )}
-      <div className="relative z-10">
-        <p className="text-5xl text-[#C67856] mb-4 font-serif">"</p>
-        <p className="text-sm font-medium text-white leading-relaxed italic mb-4">{c.quote.text}</p>
-        <p className="text-xs text-[#C67856]">— {c.quote.context}</p>
-      </div>
-    </div>,
-
-    // 마무리
-    <div key="closing" className="shrink-0 w-full aspect-square bg-[#F5F0E8] flex flex-col justify-center items-center p-8 text-center">
-      <p className="text-xs text-[#8B7B6B] font-semibold mb-4 tracking-wide">오늘의 한 줄</p>
-      <p className="text-base font-bold text-[#2C2416] leading-snug mb-6">{c.closing.oneLiner}</p>
-      <div className="w-10 h-0.5 bg-[#C67856] mb-6" />
-      <p className="text-xs text-[#8B7B6B]">📖 {c.closing.readingTime}</p>
-      <p className="text-xs text-[#8B7B6B] mt-2">《{draft.title}》</p>
-    </div>,
+    cardUrl("cover", { hook: c.cover.hook, theme: c.cover.theme, title: draft.title, author: draft.author }),
+    cardUrl("book", { title: draft.title, author: draft.author, coverUrl: draft.cover_url, selectionReason: draft.selection_reason }),
+    cardUrl("target", { title: c.targetReader.title, items: c.targetReader.items }),
+    ...c.keyMessages.map((msg, i) =>
+      cardUrl("key", { point: i + 1, title: msg.title, description: msg.description, dark: i % 2 === 0 })
+    ),
+    cardUrl("quote", { text: c.quote.text, context: c.quote.context }),
+    cardUrl("closing", { oneLiner: c.closing.oneLiner, readingTime: c.closing.readingTime, title: draft.title }),
   ] : [];
 
   function handleScroll() {
@@ -179,9 +99,10 @@ export function DraftCard({ draft }: { draft: Draft }) {
             className="flex overflow-x-auto scrollbar-hide"
             style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch" }}
           >
-            {slides.map((slide, i) => (
-              <div key={i} className="snap-center shrink-0 w-full" style={{ scrollSnapAlign: "center" }}>
-                {slide}
+            {slides.map((url, i) => (
+              <div key={i} className="shrink-0 w-full aspect-square" style={{ scrollSnapAlign: "center" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt={`슬라이드 ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
               </div>
             ))}
           </div>
@@ -218,7 +139,7 @@ export function DraftCard({ draft }: { draft: Draft }) {
         )}
       </div>
 
-      {/* 액션 버튼 — 하단 고정 */}
+      {/* 액션 버튼 */}
       <div className="border-t border-[#F5F0E8] px-4 py-3 flex gap-2">
         <button
           onClick={() => handleAction("approve")}
