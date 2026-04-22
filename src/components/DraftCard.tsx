@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { CardContentSchema } from "@/lib/ai/schema";
+import { CropModal } from "./CropModal";
 
 export type Draft = {
   id: string;
@@ -32,11 +33,11 @@ export function DraftCard({ draft }: { draft: Draft }) {
   const [captionExpanded, setCaptionExpanded] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
   const [images, setImages] = useState<string[]>([]);
+  const [cropIndex, setCropIndex] = useState<number | null>(null);
+  const [mode, setMode] = useState<"description" | "screenshot">("screenshot");
 
-  type PreviewVersion = { label: string; content: CardContentSchema; description: string };
-  const [previews, setPreviews] = useState<[PreviewVersion | null, PreviewVersion | null]>([null, null]);
-  const [activePreview, setActivePreview] = useState<0 | 1>(0);
-  const [chosenIdx, setChosenIdx] = useState<0 | 1 | null>(null);
+  type PreviewVersion = { content: CardContentSchema; description: string };
+  const [preview, setPreview] = useState<PreviewVersion | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -88,8 +89,15 @@ export function DraftCard({ draft }: { draft: Draft }) {
     setSlideIndex(index);
   }
 
-  async function handlePreview(slot: 0 | 1, body: Record<string, unknown>, label: string) {
-    setLoading(`preview-${slot}`);
+  async function handlePreview() {
+    const body: Record<string, unknown> = mode === "description"
+      ? { useExisting: true }
+      : { images: images.map((d) => ({ base64: d.split(",")[1], mimeType: "image/jpeg" })) };
+
+    if (mode === "description" && !draft.description?.trim()) return alert("기본 소개글이 없어요");
+    if (mode === "screenshot" && images.length === 0) return alert("스크린샷을 첨부해주세요");
+
+    setLoading("preview");
     try {
       const res = await fetch(`/api/admin/drafts/${draft.id}/preview-content`, {
         method: "POST",
@@ -98,13 +106,7 @@ export function DraftCard({ draft }: { draft: Draft }) {
       });
       const data = await res.json();
       if (data.ok) {
-        setPreviews((prev) => {
-          const next: [PreviewVersion | null, PreviewVersion | null] = [...prev] as [PreviewVersion | null, PreviewVersion | null];
-          next[slot] = { label, content: data.content, description: data.description };
-          return next;
-        });
-        setActivePreview(slot);
-        setChosenIdx(null);
+        setPreview({ content: data.content, description: data.description });
       } else {
         alert(`실패: ${data.error}`);
       }
@@ -114,15 +116,13 @@ export function DraftCard({ draft }: { draft: Draft }) {
   }
 
   async function handleConfirm() {
-    if (chosenIdx === null) return;
-    const chosen = previews[chosenIdx];
-    if (!chosen) return;
+    if (!preview) return;
     setLoading("confirm");
     try {
       const res = await fetch(`/api/admin/drafts/${draft.id}/save-content`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: chosen.content, description: chosen.description }),
+        body: JSON.stringify({ content: preview.content, description: preview.description }),
       });
       const data = await res.json();
       if (data.ok) router.refresh();
@@ -163,134 +163,129 @@ export function DraftCard({ draft }: { draft: Draft }) {
       {isPendingInput && (
         <div className="px-4 py-4 border-t border-[#F5F0E8] space-y-3">
 
-          {/* 알라딘 링크 */}
-          {draft.isbn13 && (
-            <div className="flex justify-end">
+          {/* 제목 + 알라딘 링크 */}
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-[#2C2416] truncate">{draft.title}</p>
+            {draft.isbn13 && (
               <a href={`https://www.aladin.co.kr/shop/wproduct.aspx?ISBN=${draft.isbn13}`}
                 target="_blank" rel="noopener noreferrer"
-                className="text-xs text-[#C67856] font-semibold underline underline-offset-2">
+                className="text-xs text-[#C67856] font-semibold underline underline-offset-2 shrink-0">
                 알라딘 페이지 열기
               </a>
-            </div>
-          )}
-
-          {/* 버전 A — 기본 소개글 */}
-          <div className="rounded-xl border border-[#EDE5D8] overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-2 bg-[#F5F0E8]">
-              <p className="text-xs font-semibold text-[#2C2416]">버전 A — 기본 소개글</p>
-              <button
-                onClick={() => handlePreview(0, { useExisting: true }, "기본 소개글")}
-                disabled={loading !== null || !draft.description?.trim()}
-                className="text-xs bg-[#2C2416] text-white px-3 py-1 rounded-lg disabled:opacity-40"
-              >
-                {loading === "preview-0" ? "생성 중…" : "슬라이드 미리보기"}
-              </button>
-            </div>
-            <p className="text-xs text-[#8B7B6B] px-3 py-2 line-clamp-2 whitespace-pre-wrap">
-              {draft.description?.trim() || "소개글 없음 — 스크린샷을 이용해주세요"}
-            </p>
+            )}
           </div>
 
-          {/* 버전 B — 스크린샷 */}
-          <div className="rounded-xl border border-[#EDE5D8] overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-2 bg-[#F5F0E8]">
-              <p className="text-xs font-semibold text-[#2C2416]">버전 B — 스크린샷</p>
+          {/* 간단 설명 */}
+          <button
+            type="button"
+            onClick={() => setDescExpanded((v) => !v)}
+            className={`text-left text-xs text-[#8B7B6B] whitespace-pre-wrap ${descExpanded ? "" : "line-clamp-3"}`}
+          >
+            {draft.description?.trim() || "소개글 없음"}
+          </button>
+
+          {/* 모드 선택 */}
+          <div className="flex rounded-xl overflow-hidden border border-[#EDE5D8]">
+            {([
+              { value: "description", label: "기본 소개글" },
+              { value: "screenshot", label: "스크린샷" },
+            ] as const).map((opt) => (
               <button
-                onClick={() => {
-                  if (images.length === 0) return alert("스크린샷을 첨부해주세요");
-                  handlePreview(1, { images: images.map((d) => ({ base64: d.split(",")[1], mimeType: "image/jpeg" })) }, "스크린샷");
-                }}
-                disabled={loading !== null || images.length === 0}
-                className="text-xs bg-[#2C2416] text-white px-3 py-1 rounded-lg disabled:opacity-40"
+                key={opt.value}
+                onClick={() => { setMode(opt.value); setPreview(null); }}
+                className={`flex-1 py-2 text-xs font-semibold transition-colors ${mode === opt.value ? "bg-[#2C2416] text-white" : "bg-white text-[#8B7B6B]"}`}
               >
-                {loading === "preview-1" ? "생성 중…" : "슬라이드 미리보기"}
+                {opt.label}
               </button>
-            </div>
-            <div className="px-3 py-2">
-              {images.length > 0 ? (
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {images.map((src, i) => (
-                    <div key={i} className="relative shrink-0 w-14 h-20 rounded-lg overflow-hidden border border-[#EDE5D8]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={src} alt={`스크린샷 ${i + 1}`} className="w-full h-full object-cover" />
-                      <button
-                        onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}
-                        className="absolute top-0.5 right-0.5 bg-black/60 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center leading-none"
-                      >×</button>
-                    </div>
-                  ))}
-                  {images.length < 5 && (
-                    <label className="shrink-0 w-14 h-20 rounded-lg border-2 border-dashed border-[#EDE5D8] flex flex-col items-center justify-center cursor-pointer">
-                      <span className="text-lg">+</span>
-                      <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
-                    </label>
-                  )}
-                </div>
-              ) : (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <span className="text-lg">📷</span>
-                  <span className="text-xs text-[#8B7B6B]">스크린샷 첨부</span>
-                  <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
-                </label>
-              )}
-            </div>
+            ))}
           </div>
 
-          {/* 슬라이드 비교 영역 */}
-          {(previews[0] || previews[1]) && (
-            <div>
-              {/* 탭 */}
-              <div className="flex rounded-xl overflow-hidden border border-[#EDE5D8] mb-2">
-                {([0, 1] as const).map((idx) => previews[idx] && (
-                  <button key={idx}
-                    onClick={() => setActivePreview(idx)}
-                    className={`flex-1 py-2 text-xs font-semibold transition-colors ${activePreview === idx ? "bg-[#2C2416] text-white" : "bg-white text-[#8B7B6B]"}`}
-                  >
-                    {chosenIdx === idx ? "✅ " : ""}{previews[idx]!.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* 슬라이드 캐러셀 */}
-              {previews[activePreview] && (() => {
-                const c = previews[activePreview]!.content;
-                const previewSlides = [
-                  cardUrl("cover", { hook: c.cover.hook, title: draft.title, author: draft.author }),
-                  cardUrl("book", { title: draft.title, author: draft.author, coverUrl: draft.cover_url, selectionReason: draft.selection_reason }),
-                  cardUrl("target", { title: c.targetReader.title, items: c.targetReader.items }),
-                  ...c.keyMessages.map((msg, i) => cardUrl("key", { point: i + 1, title: msg.title, description: msg.description, dark: i % 2 === 0 })),
-                  cardUrl("closing", { oneLiner: c.closing.oneLiner, readingTime: c.closing.readingTime, title: draft.title }),
-                ];
-                return (
-                  <div className="relative rounded-xl overflow-hidden border border-[#EDE5D8]">
-                    <div className="flex overflow-x-auto scrollbar-hide" style={{ scrollSnapType: "x mandatory" }}>
-                      {previewSlides.map((url, i) => (
-                        <div key={i} className="shrink-0 w-full aspect-square" style={{ scrollSnapAlign: "center" }}>
+          {/* 스크린샷 첨부 (스크린샷 모드만) */}
+          {mode === "screenshot" && (
+            <div className="rounded-xl border border-[#EDE5D8] overflow-hidden">
+              <div className="px-3 py-2">
+                {images.length > 0 ? (
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {images.map((src, i) => (
+                      <div key={i} className="relative shrink-0 w-14 h-20 rounded-lg overflow-hidden border border-[#EDE5D8]">
+                        <button
+                          type="button"
+                          onClick={() => setCropIndex(i)}
+                          className="block w-full h-full"
+                          aria-label={`스크린샷 ${i + 1} 크롭`}
+                        >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={url} alt={`슬라이드 ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
-                        </div>
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => setChosenIdx(activePreview)}
-                      className={`absolute bottom-2 right-2 text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${chosenIdx === activePreview ? "bg-[#C67856] text-white" : "bg-black/50 text-white"}`}
-                    >
-                      {chosenIdx === activePreview ? "✅ 선택됨" : "이 버전 선택"}
-                    </button>
+                          <img src={src} alt={`스크린샷 ${i + 1}`} className="w-full h-full object-cover" />
+                        </button>
+                        <button
+                          onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}
+                          className="absolute top-0.5 right-0.5 bg-black/60 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center leading-none"
+                        >×</button>
+                      </div>
+                    ))}
+                    {images.length < 5 && (
+                      <label className="shrink-0 w-14 h-20 rounded-lg border-2 border-dashed border-[#EDE5D8] flex flex-col items-center justify-center cursor-pointer">
+                        <span className="text-lg">+</span>
+                        <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
+                      </label>
+                    )}
                   </div>
-                );
-              })()}
-
-              {/* 확정 버튼 */}
-              <button
-                onClick={handleConfirm}
-                disabled={loading !== null || chosenIdx === null}
-                className="w-full mt-2 bg-[#C67856] text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 active:scale-95 transition-transform"
-              >
-                {loading === "confirm" ? "저장 중…" : chosenIdx !== null ? `"${previews[chosenIdx]!.label}" 버전으로 확정` : "버전을 선택해주세요"}
-              </button>
+                ) : (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <span className="text-lg">📷</span>
+                    <span className="text-xs text-[#8B7B6B]">스크린샷 첨부</span>
+                    <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
+                  </label>
+                )}
+              </div>
             </div>
           )}
+
+          {/* 슬라이드 미리보기 결과 */}
+          {preview && (() => {
+            const c = preview.content;
+            const previewSlides = [
+              cardUrl("cover", { hook: c.cover.hook, title: draft.title, author: draft.author }),
+              cardUrl("book", { title: draft.title, author: draft.author, coverUrl: draft.cover_url, selectionReason: draft.selection_reason }),
+              cardUrl("target", { title: c.targetReader.title, items: c.targetReader.items }),
+              ...c.keyMessages.map((msg, i) => cardUrl("key", { point: i + 1, title: msg.title, description: msg.description, dark: i % 2 === 0 })),
+              cardUrl("closing", { oneLiner: c.closing.oneLiner, readingTime: c.closing.readingTime, title: draft.title }),
+            ];
+            return (
+              <div>
+                <div className="rounded-xl overflow-hidden border border-[#EDE5D8]">
+                  <div className="flex overflow-x-auto scrollbar-hide" style={{ scrollSnapType: "x mandatory" }}>
+                    {previewSlides.map((url, i) => (
+                      <div key={i} className="shrink-0 w-full aspect-square" style={{ scrollSnapAlign: "center", scrollSnapStop: "always" }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt={`슬라이드 ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  onClick={handleConfirm}
+                  disabled={loading !== null}
+                  className="w-full mt-2 bg-[#C67856] text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 active:scale-95 transition-transform"
+                >
+                  {loading === "confirm" ? "저장 중…" : "이 슬라이드로 확정"}
+                </button>
+              </div>
+            );
+          })()}
+
+          {/* 슬라이드 미리보기 버튼 */}
+          <button
+            onClick={handlePreview}
+            disabled={
+              loading !== null ||
+              (mode === "description" && !draft.description?.trim()) ||
+              (mode === "screenshot" && images.length === 0)
+            }
+            className="w-full bg-[#2C2416] text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40 active:scale-95 transition-transform"
+          >
+            {loading === "preview" ? "생성 중…" : preview ? "다시 미리보기" : "슬라이드 미리보기"}
+          </button>
 
           <button
             onClick={() => handleAction("reject")}
@@ -312,7 +307,7 @@ export function DraftCard({ draft }: { draft: Draft }) {
             style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch" }}
           >
             {slides.map((url, i) => (
-              <div key={i} className="shrink-0 w-full aspect-square" style={{ scrollSnapAlign: "center" }}>
+              <div key={i} className="shrink-0 w-full aspect-square" style={{ scrollSnapAlign: "center", scrollSnapStop: "always" }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={url} alt={`슬라이드 ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
               </div>
@@ -394,6 +389,16 @@ export function DraftCard({ draft }: { draft: Draft }) {
             {loading === "reject" ? "…" : "🗑️"}
           </button>
         </div>
+      )}
+      {cropIndex !== null && images[cropIndex] && (
+        <CropModal
+          src={images[cropIndex]}
+          onClose={() => setCropIndex(null)}
+          onApply={(cropped) => {
+            setImages((prev) => prev.map((s, i) => (i === cropIndex ? cropped : s)));
+            setCropIndex(null);
+          }}
+        />
       )}
     </div>
   );
