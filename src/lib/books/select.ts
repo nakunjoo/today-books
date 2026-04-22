@@ -2,7 +2,7 @@ import { createGroq } from "@ai-sdk/groq";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { fetchAladinList, fetchAladinDetail } from "@/lib/aladin/client";
+import { fetchAladinList, fetchAladinDetail, upgradeImageUrl } from "@/lib/aladin/client";
 import { themeForDate } from "@/lib/ai/generate-card";
 
 const groq = createGroq();
@@ -75,7 +75,7 @@ ${pool.map((b) => `- isbn13: ${b.isbn13}\n  제목: ${b.title}\n  저자: ${b.au
       title: book.title,
       author: book.author,
       publisher: book.publisher,
-      cover_url: book.cover,
+      cover_url: upgradeImageUrl(book.cover),
       description: detail?.description ?? book.description,
       toc: detail?.subInfo?.toc ?? null,
     },

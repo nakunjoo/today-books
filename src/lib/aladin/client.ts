@@ -25,6 +25,12 @@ type AladinDetailResponse = {
   >;
 };
 
+// 커버 URL을 고화질로 업그레이드 (cover → cover500)
+export function upgradeImageUrl(url: string): string {
+  if (!url) return url;
+  return url.replace(/\/cover\//i, "/cover500/").replace(/\/coversum\//i, "/cover500/");
+}
+
 function ttb(): string {
   const key = process.env.ALADIN_TTB_KEY;
   if (!key) throw new Error("Missing ALADIN_TTB_KEY in env");
