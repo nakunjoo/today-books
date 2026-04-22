@@ -18,18 +18,6 @@ export type Draft = {
   cover_url: string | null;
 };
 
-function SlideCard({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) {
-  return (
-    <div
-      className={`shrink-0 w-[calc(100vw-48px)] max-w-sm aspect-square rounded-sm flex flex-col justify-center items-center p-6 text-center ${
-        dark ? "bg-[#2C2416] text-white" : "bg-[#F5F0E8] text-[#2C2416]"
-      }`}
-    >
-      {children}
-    </div>
-  );
-}
-
 export function DraftCard({ draft }: { draft: Draft }) {
   const [loading, setLoading] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -42,59 +30,104 @@ export function DraftCard({ draft }: { draft: Draft }) {
   const c = draft.content;
 
   const slides = c ? [
-    // 커버
-    <SlideCard key="cover" dark>
-      <p className="text-xs text-[#C67856] font-semibold mb-3 tracking-widest uppercase">{c.cover.theme}</p>
-      <p className="text-lg font-bold leading-snug mb-4">"{c.cover.hook}"</p>
-      <p className="text-xs text-[#C67856]">《{draft.title}》</p>
-    </SlideCard>,
+    // 커버 — 책 이미지 + 훅
+    <div key="cover" className="shrink-0 w-full aspect-square bg-[#2C2416] flex flex-col relative overflow-hidden">
+      {draft.cover_url && (
+        <Image
+          src={draft.cover_url}
+          alt={draft.title ?? ""}
+          fill
+          className="object-cover opacity-30"
+          unoptimized
+        />
+      )}
+      <div className="relative z-10 flex flex-col h-full justify-between p-6">
+        <p className="text-xs text-[#C67856] font-semibold tracking-widest uppercase">{c.cover.theme}</p>
+        <div>
+          <p className="text-xl font-bold text-white leading-snug mb-2">"{c.cover.hook}"</p>
+          <p className="text-sm text-[#C67856]">《{draft.title}》</p>
+          <p className="text-xs text-white/60 mt-1">{draft.author}</p>
+        </div>
+      </div>
+    </div>,
+
+    // 책 표지 슬라이드
+    <div key="bookcover" className="shrink-0 w-full aspect-square bg-[#1A1510] flex items-center justify-center relative overflow-hidden">
+      {draft.cover_url && (
+        <Image
+          src={draft.cover_url}
+          alt={draft.title ?? ""}
+          fill
+          className="object-cover opacity-10"
+          unoptimized
+        />
+      )}
+      {draft.cover_url ? (
+        <div className="relative z-10 flex flex-col items-center gap-4">
+          <Image
+            src={draft.cover_url}
+            alt={draft.title ?? ""}
+            width={140}
+            height={200}
+            className="object-contain rounded shadow-2xl"
+            unoptimized
+          />
+          <p className="text-white text-sm font-semibold text-center px-4">《{draft.title}》</p>
+        </div>
+      ) : (
+        <p className="text-white text-4xl">📚</p>
+      )}
+    </div>,
 
     // 대상 독자
-    <SlideCard key="target">
-      <p className="text-xs text-[#8B7B6B] font-semibold mb-4 tracking-wide">{c.targetReader.title}</p>
-      <ul className="space-y-2 text-left w-full">
+    <div key="target" className="shrink-0 w-full aspect-square bg-[#F5F0E8] flex flex-col justify-center p-8">
+      <p className="text-xs text-[#C67856] font-semibold mb-5 tracking-wide text-center">{c.targetReader.title}</p>
+      <ul className="space-y-3">
         {c.targetReader.items.map((item, i) => (
-          <li key={i} className="text-sm flex gap-2">
-            <span className="text-[#C67856] font-bold">✓</span>
-            <span>{item}</span>
+          <li key={i} className="text-sm text-[#2C2416] flex gap-2.5 items-start">
+            <span className="text-[#C67856] font-bold shrink-0">✓</span>
+            <span className="leading-relaxed">{item}</span>
           </li>
         ))}
       </ul>
-    </SlideCard>,
+    </div>,
 
     // 핵심 메시지들
     ...c.keyMessages.map((msg, i) => (
-      <SlideCard key={`key-${i}`} dark={i % 2 === 0}>
-        <p className="text-xs text-[#C67856] font-semibold mb-3">POINT {i + 1}</p>
-        <p className="text-base font-bold mb-3 leading-snug">{msg.title}</p>
-        <p className={`text-xs leading-relaxed ${i % 2 === 0 ? "text-[#C0A882]" : "text-[#8B7B6B]"}`}>
-          {msg.description}
-        </p>
-      </SlideCard>
+      <div key={`key-${i}`} className={`shrink-0 w-full aspect-square flex flex-col justify-center items-center p-8 text-center ${i % 2 === 0 ? "bg-[#2C2416]" : "bg-[#F5F0E8]"}`}>
+        <p className="text-xs text-[#C67856] font-semibold mb-4 tracking-widest">POINT {i + 1}</p>
+        <p className={`text-base font-bold mb-4 leading-snug ${i % 2 === 0 ? "text-white" : "text-[#2C2416]"}`}>{msg.title}</p>
+        <div className="w-8 h-0.5 bg-[#C67856] mb-4" />
+        <p className={`text-xs leading-relaxed ${i % 2 === 0 ? "text-white/70" : "text-[#8B7B6B]"}`}>{msg.description}</p>
+      </div>
     )),
 
     // 인용구
-    <SlideCard key="quote" dark>
-      <p className="text-3xl text-[#C67856] mb-3">"</p>
-      <p className="text-sm font-medium leading-relaxed italic mb-3">{c.quote.text}</p>
-      <p className="text-xs text-[#C67856]">— {c.quote.context}</p>
-    </SlideCard>,
+    <div key="quote" className="shrink-0 w-full aspect-square bg-[#2C2416] flex flex-col justify-center items-center p-8 text-center relative overflow-hidden">
+      {draft.cover_url && (
+        <Image src={draft.cover_url} alt="" fill className="object-cover opacity-10" unoptimized />
+      )}
+      <div className="relative z-10">
+        <p className="text-5xl text-[#C67856] mb-4 font-serif">"</p>
+        <p className="text-sm font-medium text-white leading-relaxed italic mb-4">{c.quote.text}</p>
+        <p className="text-xs text-[#C67856]">— {c.quote.context}</p>
+      </div>
+    </div>,
 
     // 마무리
-    <SlideCard key="closing">
+    <div key="closing" className="shrink-0 w-full aspect-square bg-[#F5F0E8] flex flex-col justify-center items-center p-8 text-center">
       <p className="text-xs text-[#8B7B6B] font-semibold mb-4 tracking-wide">오늘의 한 줄</p>
-      <p className="text-base font-bold leading-snug mb-4">{c.closing.oneLiner}</p>
+      <p className="text-base font-bold text-[#2C2416] leading-snug mb-6">{c.closing.oneLiner}</p>
+      <div className="w-10 h-0.5 bg-[#C67856] mb-6" />
       <p className="text-xs text-[#8B7B6B]">📖 {c.closing.readingTime}</p>
-      <div className="mt-4 w-12 h-0.5 bg-[#C67856]" />
-      <p className="text-xs text-[#8B7B6B] mt-3">《{draft.title}》</p>
-    </SlideCard>,
+      <p className="text-xs text-[#8B7B6B] mt-2">《{draft.title}》</p>
+    </div>,
   ] : [];
 
   function handleScroll() {
     if (!scrollRef.current) return;
     const el = scrollRef.current;
-    const slideWidth = el.clientWidth;
-    const index = Math.round(el.scrollLeft / slideWidth);
+    const index = Math.round(el.scrollLeft / el.clientWidth);
     setSlideIndex(index);
   }
 
@@ -127,9 +160,7 @@ export function DraftCard({ draft }: { draft: Draft }) {
           <div className="w-9 h-9 rounded-full bg-[#F5F0E8] border-2 border-[#C67856] flex items-center justify-center text-xs">📚</div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-[#2C2416] leading-none truncate">
-            {draft.title ?? "제목 없음"}
-          </p>
+          <p className="text-sm font-semibold text-[#2C2416] leading-none truncate">{draft.title ?? "제목 없음"}</p>
           <p className="text-xs text-[#8B7B6B] mt-0.5">{draft.author}</p>
         </div>
         <span className="text-xs text-[#8B7B6B] shrink-0">
@@ -145,70 +176,34 @@ export function DraftCard({ draft }: { draft: Draft }) {
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-0"
+            className="flex overflow-x-auto scrollbar-hide"
             style={{ scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch" }}
           >
             {slides.map((slide, i) => (
-              <div key={i} className="snap-center shrink-0 w-full flex justify-center px-3">
+              <div key={i} className="snap-center shrink-0 w-full" style={{ scrollSnapAlign: "center" }}>
                 {slide}
               </div>
             ))}
           </div>
 
-          {/* 슬라이드 카운터 */}
           {slides.length > 1 && (
-            <div className="absolute top-2 right-4 bg-black/40 text-white text-xs px-2 py-0.5 rounded-full">
+            <div className="absolute top-2 right-3 bg-black/40 text-white text-xs px-2 py-0.5 rounded-full">
               {slideIndex + 1} / {slides.length}
             </div>
           )}
 
-          {/* 페이지 도트 */}
-          <div className="flex justify-center gap-1 mt-2 pb-1">
+          <div className="flex justify-center gap-1 py-2">
             {slides.map((_, i) => (
-              <div
-                key={i}
-                className={`rounded-full transition-all ${
-                  i === slideIndex ? "w-4 h-1.5 bg-[#C67856]" : "w-1.5 h-1.5 bg-gray-200"
-                }`}
-              />
+              <div key={i} className={`rounded-full transition-all ${i === slideIndex ? "w-4 h-1.5 bg-[#C67856]" : "w-1.5 h-1.5 bg-gray-200"}`} />
             ))}
           </div>
         </div>
       )}
 
-      {/* 액션 버튼 (인스타 스타일) */}
-      <div className="px-3 pt-1 pb-2 flex items-center gap-3">
-        <button
-          onClick={() => handleAction("approve")}
-          disabled={loading !== null}
-          className="flex items-center gap-1 text-sm font-semibold text-[#2C2416] disabled:opacity-40 active:scale-95 transition-transform"
-        >
-          <span className="text-xl">{loading === "approve" ? "⏳" : "✅"}</span>
-          <span className="text-xs">승인</span>
-        </button>
-        <button
-          onClick={() => handleAction("regenerate")}
-          disabled={loading !== null}
-          className="flex items-center gap-1 text-sm font-semibold text-[#8B7B6B] disabled:opacity-40 active:scale-95 transition-transform"
-        >
-          <span className="text-xl">{loading === "regenerate" ? "⏳" : "🔄"}</span>
-          <span className="text-xs">재생성</span>
-        </button>
-        <button
-          onClick={() => handleAction("reject")}
-          disabled={loading !== null}
-          className="flex items-center gap-1 text-sm font-semibold text-red-400 disabled:opacity-40 active:scale-95 transition-transform ml-auto"
-        >
-          <span className="text-xl">{loading === "reject" ? "⏳" : "🗑️"}</span>
-          <span className="text-xs">삭제</span>
-        </button>
-      </div>
-
       {/* 캡션 */}
       <div className="px-3 pb-3">
-        <p className="text-xs text-[#C67856] font-semibold mb-1">{draft.theme}</p>
         {draft.selection_reason && (
-          <p className="text-xs text-[#8B7B6B] italic mb-2">{draft.selection_reason}</p>
+          <p className="text-xs text-[#8B7B6B] italic mb-1.5">{draft.selection_reason}</p>
         )}
         <p className={`text-sm text-[#2C2416] leading-relaxed whitespace-pre-wrap ${!captionExpanded ? "line-clamp-3" : ""}`}>
           {draft.caption}
@@ -221,6 +216,31 @@ export function DraftCard({ draft }: { draft: Draft }) {
         {draft.hashtags?.length > 0 && (
           <p className="text-xs text-blue-500 mt-1.5 leading-relaxed">{draft.hashtags.join(" ")}</p>
         )}
+      </div>
+
+      {/* 액션 버튼 — 하단 고정 */}
+      <div className="border-t border-[#F5F0E8] px-4 py-3 flex gap-2">
+        <button
+          onClick={() => handleAction("approve")}
+          disabled={loading !== null}
+          className="flex-1 bg-[#2C2416] text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 active:scale-95 transition-transform"
+        >
+          {loading === "approve" ? "처리 중…" : "✅ 승인"}
+        </button>
+        <button
+          onClick={() => handleAction("regenerate")}
+          disabled={loading !== null}
+          className="flex-1 bg-[#F5F0E8] text-[#2C2416] py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 active:scale-95 transition-transform"
+        >
+          {loading === "regenerate" ? "생성 중…" : "🔄 재생성"}
+        </button>
+        <button
+          onClick={() => handleAction("reject")}
+          disabled={loading !== null}
+          className="px-4 bg-[#F5F0E8] text-red-400 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 active:scale-95 transition-transform"
+        >
+          {loading === "reject" ? "…" : "🗑️"}
+        </button>
       </div>
     </div>
   );
