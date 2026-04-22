@@ -87,16 +87,13 @@ function BookCover({ data }: { data: { title?: string; author?: string; coverUrl
 
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 48, position: "relative", padding: 80 }}>
         {/* 책 표지 — 작게 표시해서 저화질 티 안 남 */}
-        {data.coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={data.coverUrl}
-            alt=""
-            style={{ width: 220, height: 310, objectFit: "contain", borderRadius: 6, boxShadow: "0 32px 80px rgba(0,0,0,0.9)" }}
-          />
-        ) : (
-          <div style={{ width: 220, height: 310, background: BG_DARK, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 80 }}>📚</div>
-        )}
+        <div style={{ width: 220, height: 310, background: BG_DARK, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 80, position: "relative", overflow: "hidden" }}>
+          {data.coverUrl
+            // eslint-disable-next-line @next/next/no-img-element
+            ? <img src={data.coverUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+            : <span style={{ fontSize: 60, color: ACCENT }}>B</span>
+          }
+        </div>
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
           <div style={{ width: 40, height: 3, background: ACCENT, borderRadius: 2, display: "flex" }} />
@@ -124,10 +121,10 @@ function TargetReader({ data }: { data: { title?: string; items?: string[] } }) 
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-          {(data.items ?? []).map((item, i) => (
+          {(data.items ?? []).map((item: string, i: number) => (
             <div key={i} style={{ display: "flex", gap: 28, alignItems: "flex-start" }}>
-              <div style={{ width: 36, height: 36, borderRadius: "50%", background: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 4 }}>
-                <span style={{ fontSize: 20, color: "#fff", fontWeight: 800 }}>✓</span>
+              <div style={{ width: 44, height: 44, borderRadius: "50%", background: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                <span style={{ fontSize: 22, color: "#fff", fontWeight: 800 }}>{i + 1}</span>
               </div>
               <span style={{ fontSize: 38, color: TEXT_DARK, lineHeight: 1.5 }}>{item}</span>
             </div>
@@ -207,7 +204,7 @@ function Closing({ data }: { data: { oneLiner?: string; readingTime?: string; ti
         <span style={{ fontSize: 56, fontWeight: 800, color: TEXT_DARK, lineHeight: 1.4, textAlign: "center", maxWidth: 880, display: "flex", flexWrap: "wrap", justifyContent: "center" }}>{data.oneLiner}</span>
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-          <span style={{ fontSize: 28, color: TEXT_MID }}>📖 {data.readingTime}</span>
+          <span style={{ fontSize: 28, color: TEXT_MID }}>{data.readingTime}</span>
           <span style={{ fontSize: 30, color: ACCENT, fontWeight: 700 }}>《{data.title}》</span>
         </div>
 

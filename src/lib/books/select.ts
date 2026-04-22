@@ -75,7 +75,7 @@ ${pool.map((b) => `- isbn13: ${b.isbn13}\n  제목: ${b.title}\n  저자: ${b.au
       title: book.title,
       author: book.author,
       publisher: book.publisher,
-      cover_url: upgradeImageUrl(book.cover),
+      cover_url: book.cover,
       description: detail?.description ?? book.description,
       toc: detail?.subInfo?.toc ?? null,
     },
