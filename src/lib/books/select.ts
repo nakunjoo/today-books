@@ -57,10 +57,18 @@ export async function selectTodaysBook(theme?: string) {
     return true;
   });
 
+  console.log(`[책 선정] 신간 ${newBooks.length}권 + 베스트셀러 ${bestBooks.length}권 → 필터 후 후보 ${candidates.length}권`);
+
   if (candidates.length === 0) throw new Error("선택 가능한 책이 없습니다.");
 
   // 셔플 후 20권만 LLM에 전달
   const pool = candidates.sort(() => Math.random() - 0.5).slice(0, 20);
+
+  console.log(`[책 선정] LLM에 전달할 ${pool.length}권:`);
+  pool.forEach((b, i) => {
+    console.log(`  [${i + 1}] ${b.title} | ${b.author} | ${b.categoryName}`);
+    console.log(`       소개: ${(b.description ?? "없음").slice(0, 100)}`);
+  });
 
   const { object } = await generateObject({
     model: groq("meta-llama/llama-4-scout-17b-16e-instruct"),
@@ -87,6 +95,8 @@ ${pool.map((b) => `- isbn13: ${b.isbn13}\n  제목: ${b.title}\n  저자: ${b.au
 
   const book = pool.find((b) => b.isbn13 === object.selectedIsbn);
   if (!book) throw new Error("LLM이 잘못된 isbn13을 반환했습니다.");
+
+  console.log(`[책 선정] LLM 선택: "${book.title}" | 이유: ${object.reason}`);
 
   // 목차 포함 상세 정보 fetch
   const detail = await fetchAladinDetail(book.isbn13);
