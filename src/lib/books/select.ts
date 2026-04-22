@@ -24,6 +24,12 @@ const EXCLUDE_CATEGORIES = [
   "드로잉", "뜨개질", "요리", "바느질",
 ];
 
+// 제목에 포함되면 제외할 키워드 (카테고리 분류가 잘못된 경우 대비)
+const EXCLUDE_TITLE_KEYWORDS = [
+  "불교", "기독교", "성경", "천주교", "이슬람", "부처", "예수", "하나님", "성령",
+  "토익", "토플", "수능", "공무원",
+];
+
 export async function selectTodaysBook(theme?: string) {
   const db = supabaseAdmin();
   const todayTheme = theme ?? themeForDate();
@@ -53,6 +59,7 @@ export async function selectTodaysBook(theme?: string) {
     if (!b.isbn13 || seen.has(b.isbn13)) return false;
     if (usedIsbns.has(b.isbn13)) return false;
     if (EXCLUDE_CATEGORIES.some((kw) => b.categoryName?.includes(kw))) return false;
+    if (EXCLUDE_TITLE_KEYWORDS.some((kw) => b.title?.includes(kw))) return false;
     seen.add(b.isbn13);
     return true;
   });
