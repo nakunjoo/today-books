@@ -8,26 +8,30 @@ import { themeForDate } from "@/lib/ai/generate-card";
 const groq = createGroq();
 
 const EXCLUDE_CATEGORIES = [
-  // 만화/장르
-  "만화", "라이트노벨", "Comics", "Manga",
+  // 장르 소설 (시리즈물)
+  "판타지", "무협소설", "호러", "공포",
+  // 시/희곡
+  "시>", "희곡", "문학 잡지", "우리나라 옛글",
   // 아동/청소년
-  "어린이", "아동", "유아", "초등", "중학", "고등", "청소년",
+  "어린이", "아동", "유아",
   // 종교
   "종교", "기독교", "불교", "천주교", "이슬람",
-  // 수험/학습
-  "수험서", "자격증", "교과서", "외국어", "토익", "토플", "한국어",
-  // 전문서/교재
-  "대학교재", "전문서적", "악보", "법률", "의학", "간호",
-  // 잡지/정기간행물
-  "정기간행물", "잡지", "호",
-  // 취미 실기
-  "드로잉", "뜨개질", "요리", "바느질",
 ];
 
-// 제목에 포함되면 제외할 키워드 (카테고리 분류가 잘못된 경우 대비)
+// 제목에 포함되면 제외할 키워드
 const EXCLUDE_TITLE_KEYWORDS = [
+  // 종교
   "불교", "기독교", "성경", "천주교", "이슬람", "부처", "예수", "하나님", "성령",
-  "토익", "토플", "수능", "공무원",
+  // 시리즈 숫자 (예: "데스나이트 6", "철경 8")
+];
+
+// 제목 패턴으로 제외 (정규식)
+const EXCLUDE_TITLE_PATTERNS = [
+  /\s\d+\s*[-~]?\s*(권|부|화|화$)?$/, // 끝에 숫자 (시리즈)
+  /\[큰글자책\]/,
+  /\[세트\]/,
+  /세트\s*-\s*전/,
+  /\d+~\d+/,                          // 1~3 같은 범위
 ];
 
 export async function selectTodaysBook(theme?: string) {
@@ -48,10 +52,10 @@ export async function selectTodaysBook(theme?: string) {
     ...(recentDrafts ?? []).map((d) => d.isbn13),
   ].filter(Boolean));
 
-  // 알라딘에서 신간 + 베스트셀러 fetch
+  // 소설 카테고리(ID:1) 신간 + 베스트셀러 fetch
   const [newBooks, bestBooks] = await Promise.all([
-    fetchAladinList({ queryType: "ItemNewAll", max: 50 }),
-    fetchAladinList({ queryType: "Bestseller", max: 50 }),
+    fetchAladinList({ queryType: "ItemNewAll", max: 50, categoryId: 1 }),
+    fetchAladinList({ queryType: "Bestseller", max: 50, categoryId: 1 }),
   ]);
 
   console.log("=== 알라딘 신간 원본 ===");
@@ -65,6 +69,7 @@ export async function selectTodaysBook(theme?: string) {
     if (usedIsbns.has(b.isbn13)) return false;
     if (EXCLUDE_CATEGORIES.some((kw) => b.categoryName?.includes(kw))) return false;
     if (EXCLUDE_TITLE_KEYWORDS.some((kw) => b.title?.includes(kw))) return false;
+    if (EXCLUDE_TITLE_PATTERNS.some((pattern) => pattern.test(b.title ?? ""))) return false;
     seen.add(b.isbn13);
     return true;
   });
