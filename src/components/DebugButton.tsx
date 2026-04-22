@@ -12,6 +12,7 @@ export function DebugButton() {
       const data = await res.json();
       console.log("=== 알라딘 신간 ===", data.newBooks);
       console.log("=== 알라딘 베스트셀러 ===", data.bestBooks);
+      console.log("=== LLM 선정 결과 ===", data.selected);
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { fetchAladinList } from "@/lib/aladin/client";
+import { selectTodaysBook } from "@/lib/books/select";
 
 export async function GET() {
   const session = await auth();
@@ -11,5 +12,7 @@ export async function GET() {
     fetchAladinList({ queryType: "Bestseller", max: 50 }),
   ]);
 
-  return NextResponse.json({ newBooks, bestBooks });
+  const selected = await selectTodaysBook();
+
+  return NextResponse.json({ newBooks, bestBooks, selected });
 }
