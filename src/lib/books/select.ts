@@ -41,9 +41,9 @@ export async function selectTodaysBook(theme?: string) {
   const db = supabaseAdmin();
   const todayTheme = theme ?? themeForDate();
 
-  // 승인된 책은 영구 제외, 대기 중인 초안은 90일 이내만 제외
+  // 승인된 책은 영구 제외, 대기 중인 초안은 100일 이내만 제외
   const since = new Date();
-  since.setDate(since.getDate() - 90);
+  since.setDate(since.getDate() - 100);
 
   const [{ data: approvedDrafts }, { data: recentDrafts }] = await Promise.all([
     db.from("drafts").select("isbn13").eq("status", "approved").not("isbn13", "is", null),
