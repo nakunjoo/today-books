@@ -14,6 +14,24 @@ type ApprovedBook = {
 export function ApprovedList({ books }: { books: ApprovedBook[] }) {
   const [list, setList] = useState(books);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState<string | null>(null);
+
+  async function handlePublish(id: string) {
+    if (!confirm("Instagram에 게시할까요?")) return;
+    setPublishing(id);
+    try {
+      const res = await fetch(`/api/admin/drafts/${id}/publish`, { method: "POST" });
+      const data = await res.json();
+      if (data.ok) {
+        setList((prev) => prev.map((b) => b.id === id ? { ...b, published: true } : b));
+        alert("✅ Instagram 게시 완료!");
+      } else {
+        alert(`실패: ${data.error}`);
+      }
+    } finally {
+      setPublishing(null);
+    }
+  }
 
   async function handleDelete(id: string) {
     if (!confirm("삭제하면 복구할 수 없어요. 계속할까요?")) return;
@@ -57,8 +75,15 @@ export function ApprovedList({ books }: { books: ApprovedBook[] }) {
               {new Date(book.created_at).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" })}
             </p>
             <button
+              onClick={() => handlePublish(book.id)}
+              disabled={publishing === book.id || deleting === book.id}
+              className="text-white text-xs px-2 py-1 rounded-lg bg-[#C67856] disabled:opacity-40 shrink-0"
+            >
+              {publishing === book.id ? "…" : "📤"}
+            </button>
+            <button
               onClick={() => handleDelete(book.id)}
-              disabled={deleting === book.id}
+              disabled={deleting === book.id || publishing === book.id}
               className="text-red-400 text-xs px-2 py-1 rounded-lg bg-red-50 disabled:opacity-40 shrink-0"
             >
               {deleting === book.id ? "…" : "삭제"}
