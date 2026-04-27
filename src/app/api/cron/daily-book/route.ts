@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createDraft } from "@/lib/books/draft";
+import { sendTelegram } from "@/lib/telegram";
 
 // Vercel Cron: 매일 오후 6시 (KST = UTC 9시)
 export async function GET(req: Request) {
@@ -23,13 +24,3 @@ export async function GET(req: Request) {
   }
 }
 
-async function sendTelegram(text: string) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-  if (!token || !chatId) return;
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text }),
-  }).catch(() => null);
-}
