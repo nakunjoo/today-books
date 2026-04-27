@@ -55,7 +55,7 @@ export async function POST(
     return NextResponse.json({ ok: false, error: "슬라이드 데이터가 없습니다" }, { status: 400 });
   }
 
-  const caption = [draft.caption, draft.hashtags?.join(" ")].filter(Boolean).join("\n\n");
+  const caption = [draft.caption, "📖 프로필 링크에서 책 정보 확인하기", draft.hashtags?.join(" ")].filter(Boolean).join("\n\n");
   const urls = slideUrls(draft, draft.content as CardContentSchema);
 
   try {
@@ -63,6 +63,7 @@ export async function POST(
     const itemResults = await Promise.all(
       urls.map((image_url) => ig(`/${IG_USER_ID}/media`, { image_url, is_carousel_item: true }))
     );
+    console.log("[publish] 1. item results:", JSON.stringify(itemResults));
 
     const failed = itemResults.find((r) => r.error);
     if (failed?.error) {
@@ -72,9 +73,10 @@ export async function POST(
     // 2. 캐러셀 컨테이너 생성
     const carousel = await ig(`/${IG_USER_ID}/media`, {
       media_type: "CAROUSEL",
-      children: itemResults.map((r) => r.id).join(","),
+      children: itemResults.map((r) => r.id),
       caption,
     });
+    console.log("[publish] 2. carousel:", JSON.stringify(carousel));
 
     if (carousel.error) {
       return NextResponse.json({ ok: false, error: `캐러셀 생성 실패: ${carousel.error.message}` }, { status: 500 });
@@ -82,6 +84,7 @@ export async function POST(
 
     // 3. 게시
     const published = await ig(`/${IG_USER_ID}/media_publish`, { creation_id: carousel.id });
+    console.log("[publish] 3. published:", JSON.stringify(published));
 
     if (published.error) {
       return NextResponse.json({ ok: false, error: `게시 실패: ${published.error.message}` }, { status: 500 });
