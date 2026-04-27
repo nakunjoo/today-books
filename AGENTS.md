@@ -55,7 +55,8 @@ src/
 └── components/
     ├── DraftCard.tsx       # 초안 카드 (모드 선택, 슬라이드 미리보기)
     ├── CropModal.tsx       # 스크린샷 자유 영역 크롭 모달 (react-image-crop)
-    ├── ApprovedList.tsx    # 승인된 책 목록 (Instagram 게시 버튼)
+    ├── ApprovedList.tsx    # 승인됨/게시완료 목록 (Instagram 게시·삭제 버튼)
+    ├── ManagerTabs.tsx     # 대기/승인됨/게시완료 탭 UI
     ├── GenerateButton.tsx  # 초안 생성 버튼
     └── DebugButton.tsx     # 알라딘 API 디버그
 ```
@@ -102,9 +103,22 @@ AUTH_GOOGLE_ID
 AUTH_GOOGLE_SECRET
 GROQ_API_KEY
 ALADIN_TTB_KEY
-INSTAGRAM_USER_ID        # 미설정 (계정 등록 후)
-INSTAGRAM_ACCESS_TOKEN   # 미설정 (계정 등록 후)
+INSTAGRAM_USER_ID        # Instagram 비즈니스 계정 ID (앱 ID 아님)
+INSTAGRAM_ACCESS_TOKEN   # 장기 토큰 (60일마다 갱신)
+CRON_SECRET              # 직접 생성 (openssl rand -base64 32)
+TELEGRAM_BOT_TOKEN       # @BotFather로 발급
+TELEGRAM_CHAT_ID         # getUpdates API로 확인
 ```
+
+## 크론 스케줄
+- 매일 오후 6시 (KST) = UTC 09:00
+- `vercel.json`에 설정: `"schedule": "0 9 * * *"`
+- 초안 생성 성공/실패 시 텔레그램 알림 전송 (`/api/cron/daily-book/route.ts`)
+
+## 관리자 페이지 탭 구조
+- **대기**: `pending_input`, `pending_review` 상태 초안
+- **승인됨**: `approved` 상태 — 📤 버튼으로 Instagram 게시
+- **게시 완료**: `published` 상태 — 삭제 버튼만 노출 (Instagram 게시물도 함께 삭제)
 
 ## 주의사항
 - 모든 UI는 모바일 기준으로 설계 (max-w-lg)
