@@ -111,3 +111,6 @@ INSTAGRAM_ACCESS_TOKEN   # 미설정 (계정 등록 후)
 - 슬라이드 이미지는 1080×1080 JPEG, edge runtime에서 생성
 - Instagram Graph API: 액세스 토큰 60일마다 갱신 필요
 - 알라딘 TTB API: fulldescription 등 OptResult는 일반 키로 subInfo에 안 내려옴
+- drafts 테이블 Instagram 게시 ID 컬럼명은 `instagram_post_id` (ig_media_id 아님)
+- Instagram 게시 시 슬라이드 이미지 URL이 공개 접근 가능해야 함 (로컬 환경 게시 불가, Vercel 배포 필요)
+- INSTAGRAM_USER_ID는 앱 ID가 아닌 Instagram 비즈니스 계정 ID (Graph API로 별도 조회)

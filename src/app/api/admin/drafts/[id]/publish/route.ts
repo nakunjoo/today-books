@@ -90,7 +90,7 @@ export async function POST(
     // 4. DB 업데이트
     await db.from("drafts").update({
       status: "published",
-      ig_media_id: published.id,
+      instagram_post_id: published.id,
       published_at: new Date().toISOString(),
     }).eq("id", id);
 
