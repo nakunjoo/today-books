@@ -1,10 +1,10 @@
 import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { DraftCard, type Draft } from "@/components/DraftCard";
+import { type Draft } from "@/components/DraftCard";
 import { GenerateButton } from "@/components/GenerateButton";
-import { ApprovedList } from "@/components/ApprovedList";
 import { DebugButton } from "@/components/DebugButton";
+import { ManagerTabs } from "@/components/ManagerTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +15,7 @@ type ApprovedBook = {
   cover_url: string | null;
   isbn13: string | null;
   created_at: string;
+  instagram_post_id?: string | null;
 };
 
 export default async function ManagerPage() {
@@ -22,7 +23,7 @@ export default async function ManagerPage() {
   if (!session) redirect("/login");
 
   const db = supabaseAdmin();
-  const [{ data: drafts, error }, { data: approved }] = await Promise.all([
+  const [{ data: drafts, error }, { data: approved }, { data: published }] = await Promise.all([
     db.from("drafts")
       .select("id, status, theme, selection_reason, hook, caption, hashtags, content, created_at, title, author, cover_url, isbn13, description")
       .in("status", ["pending_input", "pending_review"])
@@ -31,6 +32,10 @@ export default async function ManagerPage() {
       .select("id, title, author, cover_url, isbn13, created_at")
       .eq("status", "approved")
       .order("created_at", { ascending: false }),
+    db.from("drafts")
+      .select("id, title, author, cover_url, isbn13, created_at, instagram_post_id")
+      .eq("status", "published")
+      .order("published_at", { ascending: false }),
   ]);
 
   return (
@@ -53,33 +58,13 @@ export default async function ManagerPage() {
         </form>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 py-5 space-y-8">
-        {/* 검토 대기 */}
-        <section>
-          {error ? (
-            <div className="text-red-600 text-sm p-4 bg-red-50 rounded-xl">오류: {error.message}</div>
-          ) : !drafts || drafts.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-3xl mb-3">✅</p>
-              <p className="text-[#2C2416] font-semibold">검토 대기 초안 없음</p>
-              <p className="text-[#8B7B6B] text-sm mt-1">모든 초안이 처리됐거나 아직 생성 전이에요.</p>
-            </div>
-          ) : (
-            <>
-              <p className="text-sm font-semibold text-[#2C2416] mb-3">대기 {drafts.length}건</p>
-              <div className="flex flex-col gap-3">
-                {(drafts as Draft[]).map((draft) => (
-                  <DraftCard key={draft.id} draft={draft} />
-                ))}
-              </div>
-            </>
-          )}
-        </section>
-
-        {/* 승인된 게시물 */}
-        {approved && approved.length > 0 && (
-          <ApprovedList books={approved as ApprovedBook[]} />
-        )}
+      <main className="max-w-lg mx-auto px-4 py-5">
+        <ManagerTabs
+          drafts={(drafts ?? []) as Draft[]}
+          draftsError={error?.message ?? null}
+          approved={(approved ?? []) as ApprovedBook[]}
+          published={(published ?? []) as ApprovedBook[]}
+        />
       </main>
     </div>
   );

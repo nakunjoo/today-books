@@ -9,9 +9,10 @@ type ApprovedBook = {
   author: string | null;
   cover_url: string | null;
   created_at: string;
+  instagram_post_id?: string | null;
 };
 
-export function ApprovedList({ books }: { books: ApprovedBook[] }) {
+export function ApprovedList({ books, published = false }: { books: ApprovedBook[]; published?: boolean }) {
   const [list, setList] = useState(books);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [publishing, setPublishing] = useState<string | null>(null);
@@ -50,7 +51,7 @@ export function ApprovedList({ books }: { books: ApprovedBook[] }) {
 
   return (
     <section>
-      <p className="text-sm font-semibold text-[#2C2416] mb-3">게시된 책 {list.length}권</p>
+      <p className="text-sm font-semibold text-[#2C2416] mb-3">{published ? "게시 완료" : "승인됨"} {list.length}건</p>
       <div className="flex flex-col gap-2">
         {list.map((book) => (
           <div key={book.id} className="bg-white rounded-xl px-3 py-2.5 flex items-center gap-3 shadow-sm">
@@ -74,13 +75,15 @@ export function ApprovedList({ books }: { books: ApprovedBook[] }) {
             <p className="text-xs text-[#8B7B6B] shrink-0 mr-2">
               {new Date(book.created_at).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" })}
             </p>
-            <button
-              onClick={() => handlePublish(book.id)}
-              disabled={publishing === book.id || deleting === book.id}
-              className="text-white text-xs px-2 py-1 rounded-lg bg-[#C67856] disabled:opacity-40 shrink-0"
-            >
-              {publishing === book.id ? "…" : "📤"}
-            </button>
+            {!published && (
+              <button
+                onClick={() => handlePublish(book.id)}
+                disabled={publishing === book.id || deleting === book.id}
+                className="text-white text-xs px-2 py-1 rounded-lg bg-[#C67856] disabled:opacity-40 shrink-0"
+              >
+                {publishing === book.id ? "…" : "📤"}
+              </button>
+            )}
             <button
               onClick={() => handleDelete(book.id)}
               disabled={deleting === book.id || publishing === book.id}
