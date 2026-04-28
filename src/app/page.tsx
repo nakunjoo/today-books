@@ -18,7 +18,7 @@ export default async function BooksPage() {
   const { data: books } = await db
     .from("drafts")
     .select("id, title, author, cover_url, isbn13, selection_reason, created_at")
-    .eq("status", "approved")
+    .eq("status", "published")
     .order("created_at", { ascending: false });
 
   return (
