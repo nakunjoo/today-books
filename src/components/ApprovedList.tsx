@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 type ApprovedBook = {
@@ -16,6 +17,7 @@ export function ApprovedList({ books, published = false }: { books: ApprovedBook
   const [list, setList] = useState(books);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [publishing, setPublishing] = useState<string | null>(null);
+  const router = useRouter();
 
   async function handlePublish(id: string) {
     if (!confirm("Instagram에 게시할까요?")) return;
@@ -24,8 +26,8 @@ export function ApprovedList({ books, published = false }: { books: ApprovedBook
       const res = await fetch(`/api/admin/drafts/${id}/publish`, { method: "POST" });
       const data = await res.json();
       if (data.ok) {
-        setList((prev) => prev.map((b) => b.id === id ? { ...b, published: true } : b));
         alert("✅ Instagram 게시 완료!");
+        router.refresh();
       } else {
         alert(`실패: ${data.error}`);
       }

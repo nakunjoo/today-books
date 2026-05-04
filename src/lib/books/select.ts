@@ -46,8 +46,8 @@ export async function selectTodaysBook(theme?: string) {
   since.setDate(since.getDate() - 100);
 
   const [{ data: approvedDrafts }, { data: recentDrafts }] = await Promise.all([
-    db.from("drafts").select("isbn13").eq("status", "approved").not("isbn13", "is", null),
-    db.from("drafts").select("isbn13").neq("status", "approved").gte("created_at", since.toISOString()).not("isbn13", "is", null),
+    db.from("drafts").select("isbn13").in("status", ["approved", "published"]).not("isbn13", "is", null),
+    db.from("drafts").select("isbn13").not("status", "in", '("approved","published")').gte("created_at", since.toISOString()).not("isbn13", "is", null),
   ]);
 
   const usedIsbns = new Set([
@@ -59,7 +59,6 @@ export async function selectTodaysBook(theme?: string) {
   const bestResults = await Promise.all(
     NOVEL_CATEGORY_IDS.map((id) => fetchAladinList({ queryType: "Bestseller", max: 10, categoryId: id }))
   );
-  const newBooks: typeof bestResults[0] = [];
   const bestBooks = bestResults.flat();
 
   console.log("=== 알라딘 베스트셀러 원본 ===");
@@ -69,6 +68,7 @@ export async function selectTodaysBook(theme?: string) {
   const candidates = bestBooks.filter((b) => {
     if (!b.isbn13 || seen.has(b.isbn13)) return false;
     if (usedIsbns.has(b.isbn13)) return false;
+    if (!b.description?.trim()) return false; // 소개글 없는 책 제외
     if (EXCLUDE_CATEGORIES.some((kw) => b.categoryName?.includes(kw))) return false;
     if (EXCLUDE_TITLE_KEYWORDS.some((kw) => b.title?.includes(kw))) return false;
     if (EXCLUDE_TITLE_PATTERNS.some((pattern) => pattern.test(b.title ?? ""))) return false;

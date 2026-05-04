@@ -19,7 +19,7 @@ export default async function BooksPage() {
     .from("drafts")
     .select("id, title, author, cover_url, isbn13, selection_reason, created_at")
     .eq("status", "published")
-    .order("created_at", { ascending: false });
+    .order("published_at", { ascending: false });
 
   return (
     <div className="min-h-screen bg-[#F5F0E8]">
