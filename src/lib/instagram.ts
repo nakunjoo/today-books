@@ -29,6 +29,23 @@ async function igPost(path: string, body: Record<string, unknown>) {
   return res.json() as Promise<{ id?: string; error?: { message: string; code: number } }>;
 }
 
+async function pollCarouselStatus(containerId: string, maxAttempts = 20, intervalMs = 3000): Promise<{ ok: boolean; error?: string }> {
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise((r) => setTimeout(r, intervalMs));
+    const res = await fetch(
+      `https://graph.instagram.com/v21.0/${containerId}?fields=status_code,status&access_token=${IG_TOKEN}`
+    );
+    const data = await res.json() as { status_code?: string; status?: string; error?: { message: string } };
+    console.log(`[instagram] 컨테이너 상태 (${i + 1}/${maxAttempts}):`, data.status_code, data.status);
+    if (data.error) return { ok: false, error: data.error.message };
+    if (data.status_code === "FINISHED") return { ok: true };
+    if (data.status_code === "ERROR" || data.status_code === "EXPIRED") {
+      return { ok: false, error: `컨테이너 처리 실패: ${data.status_code} (${data.status ?? ""})` };
+    }
+  }
+  return { ok: false, error: "컨테이너 처리 시간 초과 (60초)" };
+}
+
 export async function publishToInstagram(draftId: string): Promise<{ ok: boolean; error?: string; igMediaId?: string }> {
   if (!IG_USER_ID || !IG_TOKEN || !BASE_URL) {
     return { ok: false, error: "Instagram 환경변수가 설정되지 않았습니다." };
@@ -59,11 +76,15 @@ export async function publishToInstagram(draftId: string): Promise<{ ok: boolean
   });
   if (carousel.error) return { ok: false, error: `캐러셀 생성 실패: ${carousel.error.message}` };
 
-  // 3. 게시
+  // 3. 처리 완료 대기 (Media ID is not available 방지)
+  const pollResult = await pollCarouselStatus(carousel.id!);
+  if (!pollResult.ok) return { ok: false, error: pollResult.error };
+
+  // 4. 게시
   const published = await igPost(`/${IG_USER_ID}/media_publish`, { creation_id: carousel.id });
   if (published.error) return { ok: false, error: `게시 실패: ${published.error.message}` };
 
-  // 4. DB 업데이트
+  // 5. DB 업데이트
   const { error: updateError } = await db.from("drafts").update({
     status: "published",
     instagram_post_id: published.id,
