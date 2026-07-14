@@ -1,8 +1,8 @@
 import type { CardContentSchema } from "@/lib/ai/schema";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { getInstagramToken } from "@/lib/instagram-token";
 
 const IG_USER_ID = process.env.INSTAGRAM_USER_ID!;
-const IG_TOKEN   = process.env.INSTAGRAM_ACCESS_TOKEN!;
 const BASE_URL   = (process.env.NEXTAUTH_URL ?? "").replace(/\/$/, "");
 
 export function slideUrls(draft: Record<string, unknown>, c: CardContentSchema): string[] {
@@ -20,20 +20,20 @@ export function slideUrls(draft: Record<string, unknown>, c: CardContentSchema):
   ];
 }
 
-async function igPost(path: string, body: Record<string, unknown>) {
+async function igPost(path: string, body: Record<string, unknown>, token: string) {
   const res = await fetch(`https://graph.instagram.com/v21.0${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...body, access_token: IG_TOKEN }),
+    body: JSON.stringify({ ...body, access_token: token }),
   });
   return res.json() as Promise<{ id?: string; error?: { message: string; code: number } }>;
 }
 
-async function pollCarouselStatus(containerId: string, maxAttempts = 20, intervalMs = 3000): Promise<{ ok: boolean; error?: string }> {
+async function pollCarouselStatus(containerId: string, token: string, maxAttempts = 20, intervalMs = 3000): Promise<{ ok: boolean; error?: string }> {
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise((r) => setTimeout(r, intervalMs));
     const res = await fetch(
-      `https://graph.instagram.com/v21.0/${containerId}?fields=status_code,status&access_token=${IG_TOKEN}`
+      `https://graph.instagram.com/v21.0/${containerId}?fields=status_code,status&access_token=${token}`
     );
     const data = await res.json() as { status_code?: string; status?: string; error?: { message: string } };
     console.log(`[instagram] 컨테이너 상태 (${i + 1}/${maxAttempts}):`, data.status_code, data.status);
@@ -47,42 +47,51 @@ async function pollCarouselStatus(containerId: string, maxAttempts = 20, interva
 }
 
 export async function publishToInstagram(draftId: string): Promise<{ ok: boolean; error?: string; igMediaId?: string }> {
-  if (!IG_USER_ID || !IG_TOKEN || !BASE_URL) {
+  if (!IG_USER_ID || !BASE_URL) {
     return { ok: false, error: "Instagram 환경변수가 설정되지 않았습니다." };
   }
+
+  const token = await getInstagramToken();
 
   const db = supabaseAdmin();
   const { data: draft, error: fetchError } = await db
     .from("drafts").select("*").eq("id", draftId).single();
 
   if (fetchError || !draft) return { ok: false, error: "초안을 찾을 수 없습니다" };
-  if (!draft.content) return { ok: false, error: "슬라이드 데이터가 없습니다" };
+
+  // 게시 실패를 기록 (select.ts의 영구 제외 목록에서 빠지고, 일정 시간 뒤 자동 삭제되도록)
+  async function fail(message: string) {
+    await db.from("drafts").update({ status: "failed", error_message: message }).eq("id", draftId);
+    return { ok: false as const, error: message };
+  }
+
+  if (!draft.content) return fail("슬라이드 데이터가 없습니다");
 
   const caption = [draft.caption, "📖 프로필 링크에서 책 정보 확인하기", draft.hashtags?.join(" ")].filter(Boolean).join("\n\n");
   const urls = slideUrls(draft, draft.content as CardContentSchema);
 
   // 1. 슬라이드 업로드
   const itemResults = await Promise.all(
-    urls.map((image_url) => igPost(`/${IG_USER_ID}/media`, { image_url, is_carousel_item: true }))
+    urls.map((image_url) => igPost(`/${IG_USER_ID}/media`, { image_url, is_carousel_item: true }, token))
   );
-  const failed = itemResults.find((r) => r.error);
-  if (failed?.error) return { ok: false, error: `슬라이드 업로드 실패: ${failed.error.message}` };
+  const failedItem = itemResults.find((r) => r.error);
+  if (failedItem?.error) return fail(`슬라이드 업로드 실패: ${failedItem.error.message}`);
 
   // 2. 캐러셀 생성
   const carousel = await igPost(`/${IG_USER_ID}/media`, {
     media_type: "CAROUSEL",
     children: itemResults.map((r) => r.id),
     caption,
-  });
-  if (carousel.error) return { ok: false, error: `캐러셀 생성 실패: ${carousel.error.message}` };
+  }, token);
+  if (carousel.error) return fail(`캐러셀 생성 실패: ${carousel.error.message}`);
 
   // 3. 처리 완료 대기 (Media ID is not available 방지)
-  const pollResult = await pollCarouselStatus(carousel.id!);
-  if (!pollResult.ok) return { ok: false, error: pollResult.error };
+  const pollResult = await pollCarouselStatus(carousel.id!, token);
+  if (!pollResult.ok) return fail(pollResult.error ?? "캐러셀 처리 실패");
 
   // 4. 게시
-  const published = await igPost(`/${IG_USER_ID}/media_publish`, { creation_id: carousel.id });
-  if (published.error) return { ok: false, error: `게시 실패: ${published.error.message}` };
+  const published = await igPost(`/${IG_USER_ID}/media_publish`, { creation_id: carousel.id }, token);
+  if (published.error) return fail(`게시 실패: ${published.error.message}`);
 
   // 5. DB 업데이트
   const { error: updateError } = await db.from("drafts").update({

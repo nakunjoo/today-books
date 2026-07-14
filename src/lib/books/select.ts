@@ -11,10 +11,6 @@ const groq = createGroq();
 const NOVEL_CATEGORY_IDS = [50998, 50920, 50919, 50993, 89481, 50994, 50922, 89482, 51538, 51032];
 
 const EXCLUDE_CATEGORIES = [
-  // 장르 소설 (시리즈물)
-  "판타지", "무협소설", "호러", "공포",
-  // 시/희곡 (혹시 섞여 들어오는 경우 대비)
-  "시>", "희곡", "문학 잡지", "우리나라 옛글",
   // 아동/청소년
   "어린이", "아동", "유아",
   // 종교
@@ -40,6 +36,10 @@ const EXCLUDE_TITLE_PATTERNS = [
 export async function selectTodaysBook(theme?: string) {
   const db = supabaseAdmin();
   const todayTheme = theme ?? themeForDate();
+
+  // 게시 실패한 초안은 24시간 지나면 삭제 (실제로 올라가지 않았는데 제외 필터에만 계속 걸리는 것 방지)
+  const failedCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  await db.from("drafts").delete().eq("status", "failed").lt("created_at", failedCutoff.toISOString());
 
   // 승인된 책은 영구 제외, 대기 중인 초안은 100일 이내만 제외
   const since = new Date();
@@ -104,7 +104,6 @@ ${pool.map((b) => `- isbn13: ${b.isbn13}\n  제목: ${b.title}\n  저자: ${b.au
 
 선정 기준:
 - 성인 누구나 읽기 좋은 책 (특정 직업·종교·연령·성별에만 해당하는 책 제외)
-- 문학, 에세이, 자기계발, 역사, 과학, 사회 등 일반 독자층이 넓은 분야 우선
 - 단순 인기 순위가 아니라, 지금 이 시점에 읽으면 의미 있을 책
 - 소개했을 때 공감대가 넓고 이야기거리가 있는 책
 

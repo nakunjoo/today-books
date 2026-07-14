@@ -15,8 +15,30 @@ export async function GET(req: Request) {
   }
 
   const managerUrl = `${process.env.NEXTAUTH_URL}/manager`;
+  const db = supabaseAdmin();
 
   try {
+    // 0. 이미 승인됐지만 게시되지 않은 초안이 있으면(과거 게시 실패로 남은 것 포함) 오래된 순으로 우선 게시
+    const { data: backlog } = await db
+      .from("drafts")
+      .select("id, title")
+      .eq("status", "approved")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (backlog) {
+      const result = await publishToInstagram(backlog.id);
+
+      if (!result.ok) {
+        await sendTelegram(`❌ Instagram 게시 실패 (대기 중이던 초안)\n\n제목: ${backlog.title}\n오류: ${result.error}\n\n${managerUrl}`);
+        return NextResponse.json({ ok: false, error: result.error });
+      }
+
+      await sendTelegram(`✅ 대기 중이던 책 게시 완료\n\n제목: ${backlog.title}\n\n${managerUrl}`);
+      return NextResponse.json({ ok: true, draftId: backlog.id, book: backlog.title });
+    }
+
     // 1. 책 선정 + 초안 생성
     const { draft, book } = await createDraft();
 
@@ -27,7 +49,6 @@ export async function GET(req: Request) {
     );
 
     // 3. DB 저장 + approved로 상태 변경
-    const db = supabaseAdmin();
     await db.from("drafts").update({
       status: "approved",
       description: book.description,
