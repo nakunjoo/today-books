@@ -28,7 +28,8 @@ export async function POST(
     }));
 
     const { text } = await generateText({
-      model: groq("meta-llama/llama-4-scout-17b-16e-instruct"),
+      model: groq("qwen/qwen3.6-27b"),
+      providerOptions: { groq: { reasoningFormat: "hidden" } },
       messages: [{
         role: "user",
         content: [

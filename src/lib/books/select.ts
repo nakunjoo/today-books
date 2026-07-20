@@ -90,7 +90,7 @@ export async function selectTodaysBook(theme?: string) {
   });
 
   const { object } = await generateObject({
-    model: groq("meta-llama/llama-4-scout-17b-16e-instruct"),
+    model: groq("openai/gpt-oss-120b"),
     schema: z.object({
       selectedIsbn: z.string().describe("선택한 책의 isbn13"),
       reason: z.string().describe("왜 오늘 이 책인지 (1~2문장)"),

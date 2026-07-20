@@ -45,7 +45,7 @@ export async function generateCardContent(
   const theme = opts.theme ?? themeForDate();
 
   const { object } = await generateObject({
-    model: groq("meta-llama/llama-4-scout-17b-16e-instruct"),
+    model: groq("openai/gpt-oss-120b"),
     schema: cardContentSchema,
     prompt: `
 ${SAFETY_RULES}
