@@ -7,7 +7,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 # todayBooks 프로젝트 컨텍스트
 
 ## 서비스 개요
-알라딘 베스트셀러 소설 중 AI가 매일 1권을 선정하고, 관리자가 슬라이드를 검토·승인 후 Instagram에 캐러셀로 게시하는 자동화 서비스.
+도서관 정보나루 인기대출 소설 중 AI가 매일 1권을 선정하고, 관리자가 슬라이드를 검토·승인 후 Instagram에 캐러셀로 게시하는 자동화 서비스.
 
 Instagram 계정: `today_bookpt`
 Instagram 소개글: "📖 오늘 뭐 읽지? AI가 매일 추천하는 소설 한 권"
@@ -31,13 +31,15 @@ Instagram 소개글: "📖 오늘 뭐 읽지? AI가 매일 추천하는 소설 �
 src/
 ├── lib/
 │   ├── books/
-│   │   ├── select.ts      # 알라딘 fetch + 필터링 + LLM 선정 + 실패 초안 정리
+│   │   ├── select.ts      # 정보나루 인기대출 fetch + 필터링 + 네이버 소개글 보강 + LLM 선정 + 실패 초안 정리
 │   │   └── draft.ts       # DB 초안 생성
 │   ├── ai/
 │   │   ├── generate-card.ts  # 슬라이드 콘텐츠 생성
 │   │   └── schema.ts         # CardContentSchema (zod)
-│   ├── aladin/
-│   │   └── client.ts      # 알라딘 TTB API 클라이언트
+│   ├── library/
+│   │   └── client.ts      # 도서관 정보나루 인기대출도서 API 클라이언트
+│   ├── naver/
+│   │   └── client.ts      # 네이버 책 검색 API 클라이언트 (ISBN → 소개글/표지)
 │   ├── instagram.ts       # 캐러셀 게시 (graph.instagram.com), 실패 시 status=failed 기록
 │   ├── instagram-token.ts # 액세스 토큰 DB 캐싱 + 자동 갱신
 │   └── telegram.ts        # 텔레그램 알림 전송
@@ -64,7 +66,7 @@ src/
     ├── ApprovedList.tsx    # 승인됨/게시완료 목록 (Instagram 게시·삭제 버튼)
     ├── ManagerTabs.tsx     # 대기/승인됨/게시완료 탭 UI
     ├── GenerateButton.tsx  # 초안 생성 버튼
-    └── DebugButton.tsx     # 알라딘 API 디버그
+    └── DebugButton.tsx     # 정보나루/네이버 API 디버그 (/api/admin/debug/books)
 ```
 
 ## Draft 상태 흐름
@@ -79,24 +81,26 @@ pending_input → pending_review → approved → published
 ## 슬라이드 생성 워크플로우
 DraftCard(`pending_input`) UI는 두 가지 모드 중 하나만 선택:
 - **스크린샷 (기본)**: 알라딘 상세페이지 스크린샷(최대 5장) → llama-4-scout vision으로 텍스트 추출. 첨부 이미지 클릭 시 CropModal에서 자유 영역 크롭 가능
-- **기본 소개글**: DB에 저장된 알라딘 API 기본 소개글 사용 (설명이 있을 때만)
+- **기본 소개글**: DB에 저장된 네이버 책 검색 소개글 사용 (설명이 있을 때만)
 
 카드 상단에는 책 제목·알라딘 링크·설명(클릭 시 펼침)이 노출되고, 하단의 단일 "슬라이드 미리보기" 버튼으로 미리보기 생성 → 결과 확인 후 "이 슬라이드로 확정" → save-content로 저장.
 
 ## 슬라이드 구성
 cover → book → target → key(×2~3) → closing
 
-## 알라딘 카테고리 ID (소설 전용)
-```
-50998, 50920, 50919, 50993, 89481, 50994, 50922, 89482, 51538, 51032
-```
-- Bestseller만 사용, 카테고리별 max:10 병렬 fetch → 최대 100권
+## 책 데이터 소스 (중요)
+- **알라딘 OpenAPI는 2026-10-30에 서비스 종료됨** (모든 호출이 errorCode 999 반환). 알라딘은 링크인바이오/관리자 화면의 구매 링크(웹페이지)로만 사용
+- **후보 목록**: 도서관 정보나루 `loanItemSrch` (인기대출도서), 최근 30일, `addCode=0`(교양)
+  - 소설 KDC 세부주제: `813, 823, 833, 843, 853, 863, 873, 883, 893` — KDC별 pageSize 20 병렬 fetch
+- **소개글/표지**: 네이버 책 검색 API (`query=isbn13`). 후보를 셔플한 뒤 순차 조회해서 소개글 있는 책 20권까지 LLM에 전달 (네이버 초당 호출 제한 때문에 병렬 X)
+- 목차(toc)는 두 API 모두 제공 안 해서 null로 저장
 - 승인된 책 영구 제외, 미승인 초안 100일 이내 제외
 
 ## 필터 규칙 (select.ts)
 - EXCLUDE_CATEGORIES: 아동/유아, 종교만 제외 (판타지/무협/호러 등 장르 소설은 후보에 포함, 게시할 책이 부족해서 완화함)
 - EXCLUDE_TITLE_KEYWORDS: 종교 관련 키워드
 - EXCLUDE_TITLE_PATTERNS: 시리즈 번호, 큰글자책, 세트
+- 정보나루 `vol`(권차)이 있는 책 제외
 - LLM 선정 기준: 성인 누구나 읽기 좋은 책, 지금 시점에 읽으면 의미 있는 책 — 특정 장르/분야 우선순위는 두지 않음
 - `status='failed'`인 초안은 `created_at` 기준 24시간 지나면 selectTodaysBook 호출 시 자동 삭제 (게시 실패한 책이 영구 제외 목록에 계속 걸리는 것 방지)
 
@@ -110,7 +114,9 @@ NEXTAUTH_SECRET
 AUTH_GOOGLE_ID
 AUTH_GOOGLE_SECRET
 GROQ_API_KEY
-ALADIN_TTB_KEY
+DATA4LIBRARY_AUTH_KEY    # 도서관 정보나루 인증키
+NAVER_CLIENT_ID          # 네이버 개발자센터 (검색 API)
+NAVER_CLIENT_SECRET
 INSTAGRAM_USER_ID        # Instagram 비즈니스 계정 ID (앱 ID 아님)
 INSTAGRAM_ACCESS_TOKEN   # 장기 토큰 (60일마다 갱신)
 CRON_SECRET              # 직접 생성 (openssl rand -base64 32)
@@ -120,6 +126,8 @@ TELEGRAM_CHAT_ID         # getUpdates API로 확인
 
 ## 크론 스케줄
 - **daily-book**: 매일 오후 6시 (KST) = UTC 09:00, `"0 9 * * *"`
+  - **on/off는 DB `cron_settings` 테이블로 제어** (`name='daily-book'`, `enabled`). 배포 없이 값만 바꾸면 다음 실행부터 반영. 행이 없거나 조회 실패 시 꺼진 것으로 처리 ([cron-settings.ts](src/lib/cron-settings.ts))
+  - 2026-11-11부터 `enabled=false`: 알라딘 API 종료로 정보나루/네이버 교체 중. 키 발급·검증 후 `true`로 변경할 것
   - `status='approved'`인 초안이 이미 있으면(게시 실패로 밀려있던 것 포함) **가장 오래된 것부터 우선 게시**, 없을 때만 새 책 선정
   - 초안 생성/게시 성공·실패 시 텔레그램 알림 전송
 - **refresh-instagram-token**: 매주 일요일 오후 6시 (KST) = UTC 09:00, `"0 9 * * 0"`
@@ -133,7 +141,6 @@ TELEGRAM_CHAT_ID         # getUpdates API로 확인
 ## 주의사항
 - 모든 UI는 모바일 기준으로 설계 (max-w-lg)
 - 슬라이드 이미지는 1080×1080 JPEG, edge runtime에서 생성
-- 알라딘 TTB API: fulldescription 등 OptResult는 일반 키로 subInfo에 안 내려옴
 - drafts 테이블 Instagram 게시 ID 컬럼명은 `instagram_post_id` (ig_media_id 아님)
 - Instagram 게시 시 슬라이드 이미지 URL이 공개 접근 가능해야 함 (로컬 환경 게시 불가, Vercel 배포 필요)
 - INSTAGRAM_USER_ID는 앱 ID가 아닌 Instagram 비즈니스 계정 ID (Graph API로 별도 조회)

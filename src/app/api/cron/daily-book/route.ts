@@ -4,6 +4,7 @@ import { generateCardContent } from "@/lib/ai/generate-card";
 import { publishToInstagram } from "@/lib/instagram";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { sendTelegram } from "@/lib/telegram";
+import { isCronEnabled } from "@/lib/cron-settings";
 
 // Vercel Cron: 매일 오후 6시 (KST = UTC 9시)
 export async function GET(req: Request) {
@@ -12,6 +13,11 @@ export async function GET(req: Request) {
     if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+  }
+
+  // cron_settings에서 꺼져 있으면 아무것도 하지 않음 (배포 없이 on/off)
+  if (!(await isCronEnabled("daily-book"))) {
+    return NextResponse.json({ ok: true, skipped: "daily-book 크론이 꺼져 있음 (cron_settings)" });
   }
 
   const managerUrl = `${process.env.NEXTAUTH_URL}/manager`;
@@ -39,14 +45,24 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, draftId: backlog.id, book: backlog.title });
     }
 
-    // 1. 책 선정 + 초안 생성
-    const { draft, book } = await createDraft();
+    // 1. 책 선정 + 초안 생성 (알라딘 fetch + LLM 선정)
+    let draft, book;
+    try {
+      ({ draft, book } = await createDraft());
+    } catch (err) {
+      throw new Error(`[책 선정 단계] ${err instanceof Error ? err.message : String(err)}`);
+    }
 
-    // 2. 슬라이드 콘텐츠 생성
-    const content = await generateCardContent(
-      { title: book.title!, author: book.author ?? "", publisher: book.publisher ?? undefined, description: book.description },
-      { theme: draft.theme ?? undefined, selectionReason: draft.selection_reason ?? undefined },
-    );
+    // 2. 슬라이드 콘텐츠 생성 (LLM)
+    let content;
+    try {
+      content = await generateCardContent(
+        { title: book.title!, author: book.author ?? "", publisher: book.publisher ?? undefined, description: book.description },
+        { theme: draft.theme ?? undefined, selectionReason: draft.selection_reason ?? undefined },
+      );
+    } catch (err) {
+      throw new Error(`[슬라이드 생성 단계] ${err instanceof Error ? err.message : String(err)}`);
+    }
 
     // 3. DB 저장 + approved로 상태 변경
     await db.from("drafts").update({
