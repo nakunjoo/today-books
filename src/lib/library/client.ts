@@ -113,7 +113,9 @@ export function cleanDescription(text: string): string {
     .trim();
 }
 
-// 표지는 알라딘 이미지 서버 주소로 옴 (cover200) → 고화질(cover500)로 업그레이드
+// 표지는 대부분 알라딘 이미지 서버 주소로 옴 (cover200) → 고화질(cover500)로 업그레이드
+// 네이버(bookthumb-phinf.pstatic.net/cover/...) 등 다른 서버는 경로를 바꾸면 404라서 알라딘만 바꿈
 export function upgradeCoverUrl(url: string): string {
+  if (!/^https?:\/\/image\.aladin\.co\.kr\//i.test(url)) return url;
   return url.replace(/\/cover\d*\//i, "/cover500/").replace(/\/coversum\//i, "/cover500/");
 }

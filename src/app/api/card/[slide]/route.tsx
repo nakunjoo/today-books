@@ -18,7 +18,14 @@ export async function GET(
   const { slide } = await ctx.params;
   const { searchParams } = req.nextUrl;
   const raw = searchParams.get("data");
-  const data = raw ? JSON.parse(decodeURIComponent(raw)) : {};
+  const data = raw ? parseData(raw) : {};
+
+  // 표지 이미지를 못 불러오면 ImageResponse가 0바이트 이미지를 내보내서 (인스타 게시 실패 원인)
+  // 미리 확인하고 안 되면 표지 없이 그림
+  if (slide === "book" && data.coverUrl && !(await isImageReachable(data.coverUrl))) {
+    console.error("[card] 표지 이미지 불러오기 실패, 표지 없이 렌더링:", data.coverUrl);
+    data.coverUrl = undefined;
+  }
 
   const SIZE = { width: 1080, height: 1080 };
 
@@ -30,6 +37,25 @@ export async function GET(
     case "quote":   return new ImageResponse(<Quote data={data} />, SIZE);
     case "closing": return new ImageResponse(<Closing data={data} />, SIZE);
     default:        return new ImageResponse(<Cover data={data} />, SIZE);
+  }
+}
+
+// searchParams.get()이 이미 URL 디코딩을 해주므로 그대로 파싱
+// (예전처럼 decodeURIComponent를 한 번 더 하면 "98%" 같은 문구에서 URIError로 500이 남)
+function parseData(raw: string) {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return JSON.parse(decodeURIComponent(raw));
+  }
+}
+
+async function isImageReachable(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    return res.ok && (res.headers.get("content-type") ?? "").startsWith("image/");
+  } catch {
+    return false;
   }
 }
 
