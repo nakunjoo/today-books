@@ -38,7 +38,9 @@ export function DraftCard({ draft }: { draft: Draft }) {
 
   type PreviewVersion = { content: CardContentSchema; description: string };
   const [preview, setPreview] = useState<PreviewVersion | null>(null);
+  const [previewIndex, setPreviewIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const previewScrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   async function compressImage(file: File): Promise<string> {
@@ -107,6 +109,8 @@ export function DraftCard({ draft }: { draft: Draft }) {
       const data = await res.json();
       if (data.ok) {
         setPreview({ content: data.content, description: data.description });
+        setPreviewIndex(0);
+        previewScrollRef.current?.scrollTo({ left: 0 });
       } else {
         alert(`실패: ${data.error}`);
       }
@@ -251,17 +255,51 @@ export function DraftCard({ draft }: { draft: Draft }) {
               ...c.keyMessages.map((msg, i) => cardUrl("key", { point: i + 1, title: msg.title, description: msg.description, dark: i % 2 === 0 })),
               cardUrl("closing", { oneLiner: c.closing.oneLiner, readingTime: c.closing.readingTime, title: draft.title }),
             ];
+            // PC에서는 가로 스와이프가 안 되고 스크롤바도 숨겨져 있어서 좌우 버튼으로 넘김
+            const goPreview = (dir: -1 | 1) => {
+              const el = previewScrollRef.current;
+              if (el) el.scrollBy({ left: dir * el.clientWidth, behavior: "smooth" });
+            };
             return (
               <div>
-                <div className="rounded-xl overflow-hidden border border-[#EDE5D8]">
-                  <div className="flex overflow-x-auto scrollbar-hide" style={{ scrollSnapType: "x mandatory" }}>
+                <div className="relative rounded-xl overflow-hidden border border-[#EDE5D8]">
+                  <div
+                    ref={previewScrollRef}
+                    onScroll={(e) => setPreviewIndex(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
+                    className="flex overflow-x-auto scrollbar-hide"
+                    style={{ scrollSnapType: "x mandatory" }}
+                  >
                     {previewSlides.map((url, i) => (
                       <div key={i} className="shrink-0 w-full aspect-square" style={{ scrollSnapAlign: "center", scrollSnapStop: "always" }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={url} alt={`슬라이드 ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                        <img src={url} alt={`슬라이드 ${i + 1}`} className="w-full h-full object-cover" />
                       </div>
                     ))}
                   </div>
+                  <div className="absolute top-2 right-3 bg-black/40 text-white text-xs px-2 py-0.5 rounded-full">
+                    {previewIndex + 1} / {previewSlides.length}
+                  </div>
+                  {previewIndex > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => goPreview(-1)}
+                      aria-label="이전 슬라이드"
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white text-lg leading-none"
+                    >‹</button>
+                  )}
+                  {previewIndex < previewSlides.length - 1 && (
+                    <button
+                      type="button"
+                      onClick={() => goPreview(1)}
+                      aria-label="다음 슬라이드"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white text-lg leading-none"
+                    >›</button>
+                  )}
+                </div>
+                <div className="flex justify-center gap-1 py-2">
+                  {previewSlides.map((_, i) => (
+                    <div key={i} className={`rounded-full transition-all ${i === previewIndex ? "w-4 h-1.5 bg-[#C67856]" : "w-1.5 h-1.5 bg-gray-200"}`} />
+                  ))}
                 </div>
                 <button
                   onClick={handleConfirm}
