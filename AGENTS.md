@@ -124,7 +124,7 @@ TELEGRAM_CHAT_ID         # getUpdates API로 확인
 ## 크론 스케줄
 - **daily-book**: 매일 오후 6시 (KST) = UTC 09:00, `"0 9 * * *"`
   - **on/off는 DB `cron_settings` 테이블로 제어** (`name='daily-book'`, `enabled`). 배포 없이 값만 바꾸면 다음 실행부터 반영. 행이 없거나 조회 실패 시 꺼진 것으로 처리 ([cron-settings.ts](src/lib/cron-settings.ts))
-  - 2026-11-11부터 `enabled=false`: 알라딘 API 종료로 정보나루 교체 중. 키 발급·검증 후 `true`로 변경할 것
+  - 2026-11-11~11-26 알라딘 API 종료로 꺼뒀다가, 정보나루 전환 후 2026-11-26에 다시 `enabled=true`
   - `status='approved'`인 초안이 이미 있으면(게시 실패로 밀려있던 것 포함) **가장 오래된 것부터 우선 게시**, 없을 때만 새 책 선정
   - 초안 생성/게시 성공·실패 시 텔레그램 알림 전송
 - **refresh-instagram-token**: 매주 일요일 오후 6시 (KST) = UTC 09:00, `"0 9 * * 0"`

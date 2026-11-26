@@ -45,7 +45,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, draftId: backlog.id, book: backlog.title });
     }
 
-    // 1. 책 선정 + 초안 생성 (알라딘 fetch + LLM 선정)
+    // 1. 책 선정 + 초안 생성 (정보나루 fetch + LLM 선정)
     let draft, book;
     try {
       ({ draft, book } = await createDraft());
