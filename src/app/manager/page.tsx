@@ -19,8 +19,9 @@ type ApprovedBook = {
 };
 
 export default async function ManagerPage() {
+  // 로그인은 proxy가 확인, 여기서는 관리자(tarot_admins)인지 확인
   const session = await auth();
-  if (!session) redirect("/login");
+  if (!session) redirect("/login?error=forbidden");
 
   const db = supabaseAdmin();
   const [{ data: drafts, error }, { data: approved }, { data: published }] = await Promise.all([
@@ -49,7 +50,8 @@ export default async function ManagerPage() {
         <form
           action={async () => {
             "use server";
-            await signOut({ redirectTo: "/login" });
+            await signOut();
+            redirect("/login");
           }}
         >
           <button type="submit" className="text-xs text-[#C67856] hover:text-white transition-colors">

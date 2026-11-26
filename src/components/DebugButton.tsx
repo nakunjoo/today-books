@@ -10,9 +10,9 @@ export function DebugButton() {
     try {
       const res = await fetch("/api/admin/debug/books");
       const data = await res.json();
-      console.log("=== 정보나루 인기대출 (한국소설) ===", data.loanBooks);
-      console.log("=== 네이버 책 검색 isbn13:", data.naverSample?.isbn13, " ===");
-      console.log(JSON.stringify(data.naverSample?.naver, null, 2));
+      console.log("=== 정보나루 인기대출 (소설) ===", data.loanBooks);
+      console.log("=== 도서 상세 조회 isbn13:", data.detailSample?.isbn13, " ===");
+      console.log(JSON.stringify(data.detailSample?.detail, null, 2));
     } finally {
       setLoading(false);
     }

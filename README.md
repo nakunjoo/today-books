@@ -17,7 +17,7 @@
 | 언어 | TypeScript |
 | 스타일 | Tailwind CSS |
 | DB | Supabase (PostgreSQL) |
-| 인증 | NextAuth v5 |
+| 인증 | Supabase Auth (tarot-saju 관리자 계정 공유) |
 | AI | Vercel AI SDK v6 + Groq (llama-4-scout-17b) |
 | 이미지 생성 | @vercel/og (ImageResponse, 1080×1080) |
 | 배포 | Vercel |
@@ -28,14 +28,14 @@
 
 ```
 1. 초안 생성 (관리자 버튼)
-   └─ 정보나루 인기대출도서 소설 KDC 9개 × 20권 병렬 fetch
-   └─ 네이버 책 검색으로 소개글/표지 보강
+   └─ 정보나루 인기대출도서 문학(KDC 8) 200권 fetch → 소설(8x3)만 남김
+   └─ 정보나루 도서 상세 조회로 소개글/표지 보강
    └─ 필터링 (시/희곡/판타지/무협/아동/종교/시리즈 제외)
    └─ LLM이 후보 20권 중 1권 선정
    └─ DB 저장 (status: pending_input)
 
 2. 슬라이드 생성 (관리자 검토)
-   └─ 버전 A: 네이버 책 검색 소개글로 생성
+   └─ 버전 A: 정보나루 도서 상세 소개글로 생성
    └─ 버전 B: 알라딘 상세페이지 스크린샷 첨부 → vision AI 추출
    └─ 두 버전 슬라이드 나란히 비교 후 선택
    └─ DB 저장 (status: pending_review)
@@ -71,16 +71,16 @@
 |---|---|---|
 | `/` | 공개 링크인바이오 (승인된 책 목록 + 알라딘 구매 링크) | 공개 |
 | `/manager` | 관리자 페이지 (초안 생성·검토·승인) | 로그인 필요 |
-| `/login` | 로그인 | 공개 |
+| `/login` | 관리자 로그인 (tarot-saju 아이디/비밀번호) | 공개 |
 
 ---
 
 ## 책 데이터 소스
 
-알라딘 OpenAPI는 2026-10-30에 종료되어 아래 API로 교체함.
+알라딘 OpenAPI(2026-10-30)와 네이버 책 검색 API(2026-07-31)가 모두 종료되어 도서관 정보나루만 사용함.
 
-- 후보: 도서관 정보나루 인기대출도서 (`loanItemSrch`), 최근 30일, 소설 KDC `813, 823, 833, 843, 853, 863, 873, 883, 893`
-- 소개글/표지: 네이버 책 검색 API (ISBN 조회)
+- 후보: 정보나루 인기대출도서 (`loanItemSrch`), 최근 30일, `kdc=8`로 받아서 분류번호 `8x3`(소설)만 남김
+- 소개글/표지: 정보나루 도서 상세 조회 (`srchDtlList`)
 
 
 승인된 책은 영구 제외, 미승인 초안은 100일 이내 제외.
@@ -96,20 +96,14 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 
 # Auth
+# 사이트 기본 주소 (이름만 NEXTAUTH, 관리자 로그인은 tarot-saju 계정 공유)
 NEXTAUTH_URL=
-NEXTAUTH_SECRET=
-AUTH_GOOGLE_ID=
-AUTH_GOOGLE_SECRET=
 
 # AI
 GROQ_API_KEY=
 
 # 도서관 정보나루
 DATA4LIBRARY_AUTH_KEY=
-
-# 네이버 책 검색
-NAVER_CLIENT_ID=
-NAVER_CLIENT_SECRET=
 
 # Instagram (계정 등록 후 설정)
 INSTAGRAM_USER_ID=

@@ -15,7 +15,7 @@ Instagram 소개글: "📖 오늘 뭐 읽지? AI가 매일 추천하는 소설 �
 ## 기술 스택
 - Next.js 16 App Router + TypeScript + Tailwind CSS
 - Supabase (PostgreSQL) — drafts 테이블
-- NextAuth v5 — 인증 (proxy.ts 미들웨어)
+- Supabase Auth — 관리자 로그인 (tarot-saju와 계정 공유, `src/proxy.ts`에서 세션 확인)
 - Vercel AI SDK v6 + @ai-sdk/groq — 텍스트/구조화 출력: `openai/gpt-oss-120b`, 이미지(스크린샷) 인식: `qwen/qwen3.6-27b`
 - @vercel/og ImageResponse — 1080×1080 카드 슬라이드 생성 (edge runtime)
 - Instagram Graph API v21 — 캐러셀 게시
@@ -31,15 +31,13 @@ Instagram 소개글: "📖 오늘 뭐 읽지? AI가 매일 추천하는 소설 �
 src/
 ├── lib/
 │   ├── books/
-│   │   ├── select.ts      # 정보나루 인기대출 fetch + 필터링 + 네이버 소개글 보강 + LLM 선정 + 실패 초안 정리
+│   │   ├── select.ts      # 정보나루 인기대출 fetch + 필터링 + 상세 조회로 소개글 보강 + LLM 선정 + 실패 초안 정리
 │   │   └── draft.ts       # DB 초안 생성
 │   ├── ai/
 │   │   ├── generate-card.ts  # 슬라이드 콘텐츠 생성
 │   │   └── schema.ts         # CardContentSchema (zod)
 │   ├── library/
-│   │   └── client.ts      # 도서관 정보나루 인기대출도서 API 클라이언트
-│   ├── naver/
-│   │   └── client.ts      # 네이버 책 검색 API 클라이언트 (ISBN → 소개글/표지)
+│   │   └── client.ts      # 도서관 정보나루 API 클라이언트 (인기대출 목록, 도서 상세, 제목/저자/소개글 정리)
 │   ├── instagram.ts       # 캐러셀 게시 (graph.instagram.com), 실패 시 status=failed 기록
 │   ├── instagram-token.ts # 액세스 토큰 DB 캐싱 + 자동 갱신
 │   └── telegram.ts        # 텔레그램 알림 전송
@@ -66,7 +64,7 @@ src/
     ├── ApprovedList.tsx    # 승인됨/게시완료 목록 (Instagram 게시·삭제 버튼)
     ├── ManagerTabs.tsx     # 대기/승인됨/게시완료 탭 UI
     ├── GenerateButton.tsx  # 초안 생성 버튼
-    └── DebugButton.tsx     # 정보나루/네이버 API 디버그 (/api/admin/debug/books)
+    └── DebugButton.tsx     # 정보나루 API 디버그 (/api/admin/debug/books)
 ```
 
 ## Draft 상태 흐름
@@ -81,7 +79,7 @@ pending_input → pending_review → approved → published
 ## 슬라이드 생성 워크플로우
 DraftCard(`pending_input`) UI는 두 가지 모드 중 하나만 선택:
 - **스크린샷 (기본)**: 알라딘 상세페이지 스크린샷(최대 5장) → llama-4-scout vision으로 텍스트 추출. 첨부 이미지 클릭 시 CropModal에서 자유 영역 크롭 가능
-- **기본 소개글**: DB에 저장된 네이버 책 검색 소개글 사용 (설명이 있을 때만)
+- **기본 소개글**: DB에 저장된 정보나루 도서 상세 소개글 사용 (100~200자 내외로 짧음) (설명이 있을 때만)
 
 카드 상단에는 책 제목·알라딘 링크·설명(클릭 시 펼침)이 노출되고, 하단의 단일 "슬라이드 미리보기" 버튼으로 미리보기 생성 → 결과 확인 후 "이 슬라이드로 확정" → save-content로 저장.
 
@@ -90,10 +88,14 @@ cover → book → target → key(×2~3) → closing
 
 ## 책 데이터 소스 (중요)
 - **알라딘 OpenAPI는 2026-10-30에 서비스 종료됨** (모든 호출이 errorCode 999 반환). 알라딘은 링크인바이오/관리자 화면의 구매 링크(웹페이지)로만 사용
-- **후보 목록**: 도서관 정보나루 `loanItemSrch` (인기대출도서), 최근 30일, `addCode=0`(교양)
-  - 소설 KDC 세부주제: `813, 823, 833, 843, 853, 863, 873, 883, 893` — KDC별 pageSize 20 병렬 fetch
-- **소개글/표지**: 네이버 책 검색 API (`query=isbn13`). 후보를 셔플한 뒤 순차 조회해서 소개글 있는 책 20권까지 LLM에 전달 (네이버 초당 호출 제한 때문에 병렬 X)
-- 목차(toc)는 두 API 모두 제공 안 해서 null로 저장
+- **네이버 책 검색 API도 2026-07-31 종료됨** (신규 앱의 사용 API 목록에 "검색" 없음, 책 검색은 API HUB로도 이관 안 됨). 사용하지 말 것
+- **후보 목록**: 도서관 정보나루 `loanItemSrch` (인기대출도서), 최근 30일, `kdc=8`(문학) + `addCode=0`(교양), pageSize 200 → `class_no`가 `8x3`(813 한국, 833 일본, 843 영미 등)인 소설만 남김 (보통 ~170권)
+  - ⚠️ 세부주제 `dtl_kdc=813` 등으로 조회하면 0권이 오거나 HTML 에러 페이지가 옴 — 반드시 대주제 `kdc=8`로 받고 코드에서 거를 것
+  - 첫 호출은 10초 이상 걸릴 수 있음 (이후 캐시돼서 빠름)
+- **소개글/표지**: 정보나루 `srchDtlList` (도서 상세, `isbn13`). 후보를 셔플한 뒤 순차 조회해서 소개글 있는 책 20권까지 LLM에 전달. 소개글 보유율 ~97%, 길이 중앙값 ~155자
+  - 표지는 알라딘 이미지 서버 주소(`cover200`)로 와서 `cover500`으로 바꿔 저장
+  - 제목은 부제 포함(`안녕이라 그랬어 :김애란 소설`), 저자는 `지은이: 김애란` 형태로 와서 `cleanTitle`/`cleanAuthor`로 정리
+- 목차(toc)는 제공 안 해서 null로 저장
 - 승인된 책 영구 제외, 미승인 초안 100일 이내 제외
 
 ## 필터 규칙 (select.ts)
@@ -109,14 +111,9 @@ cover → book → target → key(×2~3) → closing
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 SUPABASE_SERVICE_ROLE_KEY
-NEXTAUTH_URL
-NEXTAUTH_SECRET
-AUTH_GOOGLE_ID
-AUTH_GOOGLE_SECRET
+NEXTAUTH_URL             # 이름은 남아있지만 NextAuth는 안 씀. 사이트 기본 주소 (Instagram 슬라이드 URL, 텔레그램 링크)
 GROQ_API_KEY
-DATA4LIBRARY_AUTH_KEY    # 도서관 정보나루 인증키
-NAVER_CLIENT_ID          # 네이버 개발자센터 (검색 API)
-NAVER_CLIENT_SECRET
+DATA4LIBRARY_AUTH_KEY    # 도서관 정보나루 인증키 (발급 후 관리자 승인돼야 "API 활성화 상태가 아닙니다" 오류가 사라짐)
 INSTAGRAM_USER_ID        # Instagram 비즈니스 계정 ID (앱 ID 아님)
 INSTAGRAM_ACCESS_TOKEN   # 장기 토큰 (60일마다 갱신)
 CRON_SECRET              # 직접 생성 (openssl rand -base64 32)
@@ -127,7 +124,7 @@ TELEGRAM_CHAT_ID         # getUpdates API로 확인
 ## 크론 스케줄
 - **daily-book**: 매일 오후 6시 (KST) = UTC 09:00, `"0 9 * * *"`
   - **on/off는 DB `cron_settings` 테이블로 제어** (`name='daily-book'`, `enabled`). 배포 없이 값만 바꾸면 다음 실행부터 반영. 행이 없거나 조회 실패 시 꺼진 것으로 처리 ([cron-settings.ts](src/lib/cron-settings.ts))
-  - 2026-11-11부터 `enabled=false`: 알라딘 API 종료로 정보나루/네이버 교체 중. 키 발급·검증 후 `true`로 변경할 것
+  - 2026-11-11부터 `enabled=false`: 알라딘 API 종료로 정보나루 교체 중. 키 발급·검증 후 `true`로 변경할 것
   - `status='approved'`인 초안이 이미 있으면(게시 실패로 밀려있던 것 포함) **가장 오래된 것부터 우선 게시**, 없을 때만 새 책 선정
   - 초안 생성/게시 성공·실패 시 텔레그램 알림 전송
 - **refresh-instagram-token**: 매주 일요일 오후 6시 (KST) = UTC 09:00, `"0 9 * * 0"`
@@ -137,6 +134,13 @@ TELEGRAM_CHAT_ID         # getUpdates API로 확인
 - **대기**: `pending_input`, `pending_review` 상태 초안
 - **승인됨**: `approved` 상태 — 📤 버튼으로 Instagram 게시
 - **게시 완료**: `published` 상태 — 삭제 버튼만 노출 (Instagram 게시물도 함께 삭제)
+
+## 관리자 로그인 (중요)
+- **tarot-saju와 같은 Supabase 프로젝트의 계정을 공유** (구글 로그인/NextAuth는 제거함)
+- 로그인: 아이디/비밀번호 → `아이디@id.kkorijeom.invalid`로 바꿔 `signInWithPassword` ([username.ts](src/lib/username.ts), tarot-saju와 같은 규칙)
+- 관리자 판정: `tarot_admins` 테이블에 있는 계정만 ([auth.ts](src/lib/auth.ts)의 `auth()`). 관리자 추가/삭제는 tarot-saju와 공통이라 양쪽에 같이 적용됨
+- `src/proxy.ts`는 로그인 여부만 확인 + 세션 갱신, 관리자 여부는 각 페이지/API의 `auth()`에서 확인
+- 두 사이트는 도메인이 달라 로그인 상태는 공유 안 됨 (같은 계정으로 각각 로그인)
 
 ## 주의사항
 - 모든 UI는 모바일 기준으로 설계 (max-w-lg)
